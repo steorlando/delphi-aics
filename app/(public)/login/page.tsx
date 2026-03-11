@@ -1,3 +1,4 @@
+import { AicsLogo } from "@/components/aics-logo";
 import { ConfigurationNotice } from "@/components/configuration-notice";
 import { SignOutButton } from "@/components/sign-out-button";
 import { redirectAuthenticatedUserFromPublicRoute } from "@/lib/auth/guards";
@@ -44,6 +45,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="auth-page-shell">
       <section className="auth-card">
+        <AicsLogo className="auth-brand" />
         <span className="eyebrow">Consultazione Delphi</span>
         <h1>Accedi</h1>
         <p>

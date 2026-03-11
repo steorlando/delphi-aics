@@ -170,6 +170,27 @@ input {
   padding: clamp(1.5rem, 4vw, 2.25rem);
 }
 
+.aics-logo {
+  display: flex;
+  align-items: center;
+}
+
+.aics-logo-image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 3.35rem;
+  object-fit: contain;
+}
+
+.auth-brand {
+  margin-bottom: 0.1rem;
+}
+
+.auth-brand .aics-logo-image {
+  height: 4rem;
+}
+
 .panel-card {
   display: grid;
   gap: 0.95rem;
@@ -354,9 +375,25 @@ input {
   backdrop-filter: blur(16px);
 }
 
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.app-header-brand {
+  flex: 0 0 auto;
+}
+
+.app-header-brand-image {
+  height: 3rem;
+}
+
 .app-header-primary {
   display: grid;
   gap: 0.22rem;
+  min-width: 0;
 }
 
 .app-header-actions {
@@ -751,6 +788,12 @@ input {
   .app-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .app-header-left {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.7rem;
   }
 
   .app-header-actions {

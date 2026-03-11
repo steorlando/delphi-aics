@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AicsLogo } from "@/components/aics-logo";
 import { ConfigurationNotice } from "@/components/configuration-notice";
 import { getRoleHome } from "@/lib/auth/guards";
 import { getAuthContext } from "@/lib/auth/session";
@@ -32,6 +33,7 @@ export default async function ChangePasswordPage() {
   return (
     <main className="auth-page-shell">
       <section className="auth-card">
+        <AicsLogo className="auth-brand" />
         <span className="eyebrow">Primo accesso</span>
         <h1>Imposta la tua password personale</h1>
         <p>

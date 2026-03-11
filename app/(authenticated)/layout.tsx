@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AicsLogo } from "@/components/aics-logo";
 import { ConfigurationNotice } from "@/components/configuration-notice";
 import { SignOutButton } from "@/components/sign-out-button";
 import { requireAuthenticatedProfile } from "@/lib/auth/guards";
@@ -33,9 +34,12 @@ export default async function AuthenticatedLayout({
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="app-header-primary">
-          <span className="eyebrow">Area autenticata</span>
-          <h1 className="app-title">Consultazione Delphi</h1>
+        <div className="app-header-left">
+          <AicsLogo className="app-header-brand" imageClassName="app-header-brand-image" />
+          <div className="app-header-primary">
+            <span className="eyebrow">Area autenticata</span>
+            <h1 className="app-title">Consultazione Delphi</h1>
+          </div>
         </div>
         <div className="app-header-actions">
           <p className="app-subtitle">

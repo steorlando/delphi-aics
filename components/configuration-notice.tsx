@@ -1,3 +1,5 @@
+import { AicsLogo } from "@/components/aics-logo";
+
 type ConfigurationNoticeProps = {
   title: string;
   body: string;
@@ -10,6 +12,7 @@ export function ConfigurationNotice({
   return (
     <main className="auth-page-shell">
       <section className="auth-card">
+        <AicsLogo className="auth-brand" />
         <span className="eyebrow">Configurazione richiesta</span>
         <h1>{title}</h1>
         <p>{body}</p>
