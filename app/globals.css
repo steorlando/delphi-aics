@@ -176,6 +176,10 @@ input {
   padding: clamp(1.35rem, 3vw, 1.85rem);
 }
 
+.panel-card-wide {
+  width: min(100%, 70rem);
+}
+
 .eyebrow {
   display: inline-flex;
   align-items: center;

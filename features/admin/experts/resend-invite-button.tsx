@@ -25,7 +25,7 @@ export function ResendInviteButton({ profileId }: ResendInviteButtonProps) {
     <form action={formAction} className="inline-action-form">
       <input name="profileId" type="hidden" value={profileId} />
       <button className="secondary-button small-button" disabled={isPending} type="submit">
-        {isPending ? "Invio..." : "Resend invite"}
+        {isPending ? "Invio..." : "Reinvia invito"}
       </button>
       {state.status !== "idle" && state.message ? (
         <p className={state.status === "error" ? "form-error compact-message" : "muted compact-message"}>

@@ -17,7 +17,7 @@ export default async function AdminExpertsPage() {
     <div className="stack">
       <CreateExpertForm />
 
-      <section className="panel-card">
+      <section className="panel-card panel-card-wide">
         <span className="eyebrow">Elenco</span>
         <h2>Esperti esistenti</h2>
         <p>

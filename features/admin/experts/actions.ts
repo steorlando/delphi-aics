@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/auth/session";
 import { getAppUrl } from "@/lib/env";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type CreateExpertFormState = {
   status: "idle" | "success" | "error";
@@ -205,6 +206,7 @@ export async function resendExpertInviteAction(
   }
 
   const adminClient = createAdminSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const profilesTable = adminClient.from(
     "profiles",
   ) as unknown as ProfilesSelectBuilder;
@@ -241,16 +243,10 @@ export async function resendExpertInviteAction(
   }
 
   const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
-  const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
+  const { error: inviteError } = await supabase.auth.resetPasswordForEmail(
     expert.email,
     {
       redirectTo,
-      data: {
-        first_name: expert.first_name,
-        last_name: expert.last_name,
-        institution_name: expert.institution_name,
-        role: "expert",
-      },
     },
   );
 
@@ -263,7 +259,7 @@ export async function resendExpertInviteAction(
 
   const { error: logError } = await adminActionLogsTable.insert({
     admin_profile_id: profile.id,
-    action_type: "expert_invite_resent",
+    action_type: "expert_access_email_resent",
     target_table: "profiles",
     target_id: expert.id,
     metadata: {
