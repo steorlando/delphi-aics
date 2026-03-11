@@ -14,17 +14,21 @@ export default async function AdminExpertsPage() {
   const experts = await getExpertsDirectory();
 
   return (
-    <div className="stack">
+    <div className="admin-experts-layout">
       <CreateExpertForm />
 
-      <section className="panel-card panel-card-wide">
-        <span className="eyebrow">Elenco</span>
-        <h2>Esperti esistenti</h2>
-        <p>
-          Trovat{experts.length === 1 ? "o" : "i"} {experts.length} account{" "}
-          {experts.length === 1 ? "esperto" : "esperti"} nella tabella dei
-          profili applicativi.
-        </p>
+      <section className="panel-card panel-card-wide admin-table-column admin-table-panel">
+        <div className="section-heading">
+          <span className="eyebrow">Elenco</span>
+          <div className="section-heading-copy">
+            <h2>Esperti esistenti</h2>
+            <p>
+              Trovat{experts.length === 1 ? "o" : "i"} {experts.length} account{" "}
+              {experts.length === 1 ? "esperto" : "esperti"} nella tabella dei
+              profili applicativi.
+            </p>
+          </div>
+        </div>
 
         {experts.length === 0 ? (
           <p className="muted">Non e&apos; stato ancora creato alcun account esperto.</p>

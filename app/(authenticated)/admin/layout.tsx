@@ -20,24 +20,22 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   const profile = await requireAdminProfile();
 
   return (
-    <div className="stack">
-      <section className="panel-card">
+    <div className="admin-shell">
+      <aside className="panel-card admin-sidebar">
         <span className="eyebrow">Spazio amministrativo</span>
         <h2>{profile.first_name} {profile.last_name}</h2>
         <p>
-          Gestisci prima l&apos;accesso degli esperti. La configurazione della
-          consultazione e la gestione delle sezioni saranno aggiunte nei
-          prossimi passaggi di implementazione.
+          Seleziona una funzione dal menu e lavora nell&apos;area operativa a destra.
         </p>
-        <nav className="tab-nav" aria-label="Sezioni amministrative">
+        <nav className="admin-sidebar-nav" aria-label="Sezioni amministrative">
           {adminLinks.map((link) => (
-            <Link className="tab-link" href={link.href} key={link.href}>
+            <Link className="admin-sidebar-link" href={link.href} key={link.href}>
               {link.label}
             </Link>
           ))}
         </nav>
-      </section>
-      {children}
+      </aside>
+      <div className="admin-content">{children}</div>
     </div>
   );
 }

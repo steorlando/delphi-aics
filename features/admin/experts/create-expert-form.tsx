@@ -25,14 +25,14 @@ export function CreateExpertForm() {
   }, [state.status]);
 
   return (
-    <section className="panel-card">
-      <span className="eyebrow">Abilitazione esperti</span>
-      <h2>Crea account esperto</h2>
-      <p>
-        Il nuovo esperto verra&apos; creato in Supabase Auth e nella tabella dei
-        profili applicativi. Supabase inviera&apos; un&apos;email di invito cosi&apos; che
-        l&apos;esperto possa impostare una password personale al primo accesso.
-      </p>
+    <section className="panel-card compact-panel compact-create-panel">
+      <div className="compact-create-header">
+        <span className="eyebrow">Abilitazione esperti</span>
+        <h2>Crea account esperto</h2>
+        <p>
+          Crea il profilo e invia subito l&apos;invito via email.
+        </p>
+      </div>
 
       {state.status === "error" ? (
         <p className="form-error">{state.message}</p>
@@ -51,38 +51,40 @@ export function CreateExpertForm() {
         </div>
       ) : null}
 
-      <form ref={formRef} action={formAction} className="auth-form">
-        <div className="two-column-grid">
-          <label className="field">
+      <form ref={formRef} action={formAction} className="auth-form compact-form compact-create-form">
+        <div className="compact-create-grid">
+          <label className="field compact-inline-field">
             <span>Nome</span>
             <input name="firstName" required type="text" />
           </label>
 
-          <label className="field">
+          <label className="field compact-inline-field">
             <span>Cognome</span>
             <input name="lastName" required type="text" />
           </label>
+
+          <label className="field compact-inline-field">
+            <span>Email</span>
+            <input
+              autoComplete="email"
+              name="email"
+              placeholder="expert@example.com"
+              required
+              type="email"
+            />
+          </label>
+
+          <label className="field compact-inline-field">
+            <span>Istituzione</span>
+            <input name="institutionName" type="text" />
+          </label>
+
+          <div className="compact-form-actions compact-inline-action">
+            <button className="primary-button compact-inline-button" disabled={isPending} type="submit">
+              {isPending ? "Creazione e invio invito..." : "Crea esperto e invia invito"}
+            </button>
+          </div>
         </div>
-
-        <label className="field">
-          <span>Istituzione</span>
-          <input name="institutionName" type="text" />
-        </label>
-
-        <label className="field">
-          <span>Email</span>
-          <input
-            autoComplete="email"
-            name="email"
-            placeholder="expert@example.com"
-            required
-            type="email"
-          />
-        </label>
-
-        <button className="primary-button" disabled={isPending} type="submit">
-          {isPending ? "Creazione e invio invito..." : "Crea esperto e invia invito"}
-        </button>
       </form>
     </section>
   );

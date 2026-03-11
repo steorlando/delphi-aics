@@ -192,7 +192,7 @@ export async function resendExpertInviteAction(
   if (!profile || !profile.is_active || profile.role !== "admin") {
     return {
       status: "error" as const,
-      message: "Solo gli amministratori autenticati possono reinviare inviti.",
+      message: "Solo gli amministratori autenticati possono reinviare email di accesso.",
     };
   }
 
@@ -238,7 +238,8 @@ export async function resendExpertInviteAction(
   if (!expert.must_reset_password) {
     return {
       status: "error" as const,
-      message: "L'esperto ha gia' completato il primo accesso: reinvia un reset password, non un invito.",
+      message:
+        "L'esperto ha gia' completato il primo accesso e non richiede piu' questo link.",
     };
   }
 
@@ -277,6 +278,6 @@ export async function resendExpertInviteAction(
 
   return {
     status: "success" as const,
-    message: `Invito reinviato a ${expert.email}.`,
+    message: `Email di accesso reinviata a ${expert.email}.`,
   };
 }

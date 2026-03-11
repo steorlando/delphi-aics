@@ -5,7 +5,7 @@ export default async function AdminHomePage() {
   const experts = await getExpertsDirectory();
 
   return (
-    <div className="stack">
+    <div className="admin-overview-grid">
       <section className="panel-card">
         <span className="eyebrow">Panoramica</span>
         <h2>Stato iniziale</h2>

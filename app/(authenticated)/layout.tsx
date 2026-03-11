@@ -33,14 +33,16 @@ export default async function AuthenticatedLayout({
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
+        <div className="app-header-primary">
           <span className="eyebrow">Area autenticata</span>
           <h1 className="app-title">Consultazione Delphi</h1>
+        </div>
+        <div className="app-header-actions">
           <p className="app-subtitle">
             {profile.first_name} {profile.last_name} · {getRoleLabel(profile.role)}
           </p>
+          <SignOutButton />
         </div>
-        <SignOutButton />
       </header>
       <main className="app-main">{children}</main>
     </div>
