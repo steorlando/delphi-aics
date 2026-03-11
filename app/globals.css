@@ -2,6 +2,15 @@
   color-scheme: light;
   font-family: Georgia, "Times New Roman", serif;
   line-height: 1.5;
+  --bg-top: #f6f2e9;
+  --bg-bottom: #efe7d8;
+  --ink: #1d1b16;
+  --muted: #605948;
+  --line: #d6c8ab;
+  --panel: rgba(255, 250, 242, 0.9);
+  --accent: #7d4020;
+  --accent-dark: #5c2d13;
+  --danger: #9a2a2a;
 }
 
 * {
@@ -15,8 +24,10 @@ body {
 }
 
 body {
-  background: linear-gradient(180deg, #f6f2e9 0%, #efe7d8 100%);
-  color: #1d1b16;
+  background:
+    radial-gradient(circle at top, rgba(172, 111, 64, 0.12), transparent 30%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  color: var(--ink);
 }
 
 main {
@@ -34,4 +45,183 @@ h1 {
 p {
   margin: 0;
   font-size: 1.125rem;
+}
+
+code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.95em;
+}
+
+a {
+  color: inherit;
+}
+
+.auth-page-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem 1.5rem;
+}
+
+.auth-card,
+.panel-card {
+  width: min(100%, 38rem);
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: var(--panel);
+  box-shadow: 0 20px 60px rgba(59, 35, 16, 0.08);
+  padding: 2rem;
+}
+
+.auth-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field span {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.field input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font: inherit;
+  padding: 0.85rem 1rem;
+}
+
+.field input:focus {
+  outline: 2px solid rgba(125, 64, 32, 0.18);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.9rem 1.2rem;
+}
+
+.primary-button {
+  background: var(--accent);
+  color: #fff8ef;
+}
+
+.primary-button:hover,
+.primary-button:focus-visible {
+  background: var(--accent-dark);
+}
+
+.secondary-button {
+  background: rgba(125, 64, 32, 0.1);
+  color: var(--accent-dark);
+}
+
+.secondary-button:hover,
+.secondary-button:focus-visible {
+  background: rgba(125, 64, 32, 0.16);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 0.98rem;
+  margin: 0;
+}
+
+.sign-out-group {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.app-header {
+  width: min(100%, 64rem);
+  margin: 0 auto 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: rgba(255, 249, 238, 0.92);
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.app-title {
+  margin: 0.15rem 0;
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+}
+
+.app-subtitle {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.app-main {
+  width: min(100%, 64rem);
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .auth-card,
+  .panel-card,
+  .app-header {
+    padding: 1.25rem;
+    border-radius: 1rem;
+  }
+
+  .app-header {
+    flex-direction: column;
+  }
+
+  .sign-out-group {
+    justify-items: stretch;
+    width: 100%;
+  }
 }
