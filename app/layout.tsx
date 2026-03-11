@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Delphi Consultation",
-  description: "Simplified Delphi consultation workflow for policy documents.",
+  title: "Consultazione Delphi",
+  description: "Flusso semplificato di consultazione Delphi per documenti di policy.",
 };
 
 type RootLayoutProps = Readonly<{
@@ -12,7 +12,7 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="it">
       <body>{children}</body>
     </html>
   );

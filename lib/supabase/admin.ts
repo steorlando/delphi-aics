@@ -1,16 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from "@/lib/env";
 
-let adminClient: ReturnType<typeof createClient> | undefined;
+type Database = Record<string, never>;
+
+let adminClient: ReturnType<typeof createClient<Database>> | undefined;
 
 export function createAdminSupabaseClient() {
   if (!adminClient) {
-    adminClient = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+    adminClient = createClient<Database>(
+      getSupabaseUrl(),
+      getSupabaseServiceRoleKey(),
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
       },
-    });
+    );
   }
 
   return adminClient;

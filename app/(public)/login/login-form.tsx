@@ -31,7 +31,7 @@ export function LoginForm() {
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to sign in.",
+        error instanceof Error ? error.message : "Impossibile effettuare l'accesso.",
       );
     } finally {
       setIsSubmitting(false);
@@ -68,7 +68,7 @@ export function LoginForm() {
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
 
       <button className="primary-button" disabled={isSubmitting} type="submit">
-        {isSubmitting ? "Signing in..." : "Sign in"}
+        {isSubmitting ? "Accesso in corso..." : "Accedi"}
       </button>
     </form>
   );

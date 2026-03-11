@@ -10,13 +10,13 @@ export function ConfigurationNotice({
   return (
     <main className="auth-page-shell">
       <section className="auth-card">
-        <span className="eyebrow">Setup required</span>
+        <span className="eyebrow">Configurazione richiesta</span>
         <h1>{title}</h1>
         <p>{body}</p>
         <p className="muted">
-          Configure <code>NEXT_PUBLIC_SUPABASE_URL</code>,{" "}
-          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, and{" "}
-          <code>SUPABASE_SERVICE_ROLE_KEY</code> before continuing.
+          Configura <code>NEXT_PUBLIC_SUPABASE_URL</code>,{" "}
+          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> e{" "}
+          <code>SUPABASE_SERVICE_ROLE_KEY</code> prima di continuare.
         </p>
       </section>
     </main>

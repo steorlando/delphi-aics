@@ -8,14 +8,18 @@ type AuthenticatedLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
 
+function getRoleLabel(role: string) {
+  return role === "admin" ? "Amministratore" : "Esperto";
+}
+
 export default async function AuthenticatedLayout({
   children,
 }: AuthenticatedLayoutProps) {
   if (!hasPublicSupabaseEnv()) {
     return (
       <ConfigurationNotice
-        body="Protected routes depend on Supabase Auth cookies and the profiles table. Configure the public Supabase variables before testing this area."
-        title="Supabase is not configured yet"
+        body="Le route protette dipendono dai cookie di Supabase Auth e dalla tabella dei profili. Configura le variabili pubbliche di Supabase prima di testare quest'area."
+        title="Supabase non e' ancora configurato"
       />
     );
   }
@@ -30,10 +34,10 @@ export default async function AuthenticatedLayout({
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <span className="eyebrow">Authenticated area</span>
-          <h1 className="app-title">Delphi Consultation</h1>
+          <span className="eyebrow">Area autenticata</span>
+          <h1 className="app-title">Consultazione Delphi</h1>
           <p className="app-subtitle">
-            {profile.first_name} {profile.last_name} · {profile.role}
+            {profile.first_name} {profile.last_name} · {getRoleLabel(profile.role)}
           </p>
         </div>
         <SignOutButton />

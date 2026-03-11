@@ -9,8 +9,8 @@ export default async function ChangePasswordPage() {
   if (!hasPublicSupabaseEnv()) {
     return (
       <ConfigurationNotice
-        body="The password reset flow depends on Supabase Auth and the application profile table."
-        title="Supabase is not configured yet"
+        body="Il flusso di reimpostazione della password dipende da Supabase Auth e dalla tabella dei profili applicativi."
+        title="Supabase non e' ancora configurato"
       />
     );
   }
@@ -32,11 +32,11 @@ export default async function ChangePasswordPage() {
   return (
     <main className="auth-page-shell">
       <section className="auth-card">
-        <span className="eyebrow">First access</span>
-        <h1>Change your temporary password</h1>
+        <span className="eyebrow">Primo accesso</span>
+        <h1>Imposta la tua password personale</h1>
         <p>
-          This password change is mandatory before you can access the
-          consultation workspace.
+          Completa il flusso di invito scegliendo la tua password personale
+          prima di poter accedere allo spazio di consultazione.
         </p>
         <ChangePasswordForm email={profile.email} />
       </section>

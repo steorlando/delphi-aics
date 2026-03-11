@@ -3,11 +3,16 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/env";
 
-let browserClient: ReturnType<typeof createBrowserClient> | undefined;
+type Database = Record<string, never>;
+
+let browserClient: ReturnType<typeof createBrowserClient<Database>> | undefined;
 
 export function createBrowserSupabaseClient() {
   if (!browserClient) {
-    browserClient = createBrowserClient(getSupabaseUrl(), getSupabaseAnonKey());
+    browserClient = createBrowserClient<Database>(
+      getSupabaseUrl(),
+      getSupabaseAnonKey(),
+    );
   }
 
   return browserClient;

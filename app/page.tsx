@@ -8,8 +8,8 @@ export default async function HomePage() {
   if (!hasPublicSupabaseEnv()) {
     return (
       <ConfigurationNotice
-        body="The project bootstrap is running, but the application cannot resolve authentication or profiles until Supabase credentials are configured."
-        title="Supabase configuration missing"
+        body="L'inizializzazione del progetto e' in corso, ma l'applicazione non puo' risolvere autenticazione e profili finche' le credenziali Supabase non sono configurate."
+        title="Configurazione Supabase mancante"
       />
     );
   }

@@ -7,7 +7,11 @@ import { LoginForm } from "./login-form";
 
 function getErrorMessage(errorCode?: string) {
   if (errorCode === "profile_missing") {
-    return "Your account is authenticated but not provisioned in the application profile table yet.";
+    return "Il tuo account e' autenticato, ma non e' ancora stato registrato nella tabella dei profili applicativi.";
+  }
+
+  if (errorCode === "invite_invalid") {
+    return "Il link di invito non e' valido o e' scaduto. Chiedi a un amministratore di inviarne uno nuovo.";
   }
 
   return null;
@@ -23,8 +27,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   if (!hasPublicSupabaseEnv()) {
     return (
       <ConfigurationNotice
-        body="The app shell is ready, but authentication cannot start until Supabase environment variables are configured."
-        title="Supabase is not configured yet"
+        body="La struttura dell'app e' pronta, ma l'autenticazione non puo' iniziare finche' le variabili di ambiente di Supabase non sono configurate."
+        title="Supabase non e' ancora configurato"
       />
     );
   }
@@ -40,11 +44,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="auth-page-shell">
       <section className="auth-card">
-        <span className="eyebrow">Delphi consultation</span>
-        <h1>Sign in</h1>
+        <span className="eyebrow">Consultazione Delphi</span>
+        <h1>Accedi</h1>
         <p>
-          Experts and administrators use the same login. Access is controlled by
-          your application profile and consultation role.
+          Esperti e amministratori usano lo stesso accesso. I permessi dipendono
+          dal tuo profilo applicativo e dal ruolo nella consultazione.
         </p>
 
         {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
@@ -52,8 +56,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         {showProvisioningIssue ? (
           <>
             <p className="muted">
-              The current session exists in Supabase Auth, but no active
-              application profile was found.
+              La sessione corrente esiste in Supabase Auth, ma non e&apos; stato
+              trovato alcun profilo applicativo attivo.
             </p>
             <SignOutButton />
           </>

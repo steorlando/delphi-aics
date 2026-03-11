@@ -19,7 +19,7 @@ export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
     event.preventDefault();
 
     if (password !== confirmPassword) {
-      setErrorMessage("The passwords do not match.");
+      setErrorMessage("Le password non coincidono.");
       return;
     }
 
@@ -48,7 +48,7 @@ export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to update password.",
+        error instanceof Error ? error.message : "Impossibile aggiornare la password.",
       );
     } finally {
       setIsSubmitting(false);
@@ -57,10 +57,10 @@ export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
 
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
-      <p className="muted">Signed in as {email}</p>
+      <p className="muted">Accesso effettuato come {email}</p>
 
       <label className="field">
-        <span>New password</span>
+        <span>Nuova password</span>
         <input
           autoComplete="new-password"
           minLength={8}
@@ -72,7 +72,7 @@ export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
       </label>
 
       <label className="field">
-        <span>Confirm new password</span>
+        <span>Conferma nuova password</span>
         <input
           autoComplete="new-password"
           minLength={8}
@@ -86,7 +86,7 @@ export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
 
       <button className="primary-button" disabled={isSubmitting} type="submit">
-        {isSubmitting ? "Updating..." : "Save new password"}
+        {isSubmitting ? "Aggiornamento in corso..." : "Salva nuova password"}
       </button>
     </form>
   );

@@ -34,3 +34,13 @@ export function getSupabaseServiceRoleKey() {
 
   return value;
 }
+
+export function getAppUrl() {
+  const value = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
+
+  if (!value) {
+    throw new Error("Missing NEXT_PUBLIC_APP_URL");
+  }
+
+  return value.replace(/\/+$/, "");
+}

@@ -25,7 +25,7 @@ export function SignOutButton() {
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to sign out.",
+        error instanceof Error ? error.message : "Impossibile uscire dalla sessione.",
       );
     } finally {
       setIsPending(false);
@@ -40,7 +40,7 @@ export function SignOutButton() {
         onClick={handleSignOut}
         type="button"
       >
-        {isPending ? "Signing out..." : "Sign out"}
+        {isPending ? "Uscita in corso..." : "Esci"}
       </button>
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
     </div>

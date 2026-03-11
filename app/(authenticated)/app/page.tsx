@@ -5,11 +5,11 @@ export default async function ExpertHomePage() {
 
   return (
     <section className="panel-card">
-      <span className="eyebrow">Expert area</span>
-      <h2>Welcome, {profile.first_name}</h2>
+      <span className="eyebrow">Area esperto</span>
+      <h2>Benvenuto, {profile.first_name}</h2>
       <p>
-        Your consultation workspace will appear here once the section-based
-        commenting flow is implemented.
+        Il tuo spazio di consultazione apparira&apos; qui una volta implementato il
+        flusso di commento basato sulle sezioni.
       </p>
     </section>
   );
