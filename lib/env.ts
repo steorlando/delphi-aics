@@ -1,16 +1,12 @@
-function getEnv(name: string) {
-  return process.env[name]?.trim() ?? "";
-}
-
 export function hasPublicSupabaseEnv() {
   return Boolean(
-    getEnv("NEXT_PUBLIC_SUPABASE_URL") &&
-      getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
   );
 }
 
 export function getSupabaseUrl() {
-  const value = getEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 
   if (!value) {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
@@ -20,7 +16,7 @@ export function getSupabaseUrl() {
 }
 
 export function getSupabaseAnonKey() {
-  const value = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
   if (!value) {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
@@ -30,7 +26,7 @@ export function getSupabaseAnonKey() {
 }
 
 export function getSupabaseServiceRoleKey() {
-  const value = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const value = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
 
   if (!value) {
     throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");

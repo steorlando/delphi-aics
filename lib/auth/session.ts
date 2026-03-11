@@ -14,6 +14,15 @@ const profileSelect = [
   "is_active",
 ].join(", ");
 
+function isMissingSessionError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "AuthSessionMissingError"
+  );
+}
+
 export const getAuthContext = cache(async () => {
   const supabase = await createServerSupabaseClient();
   const {
@@ -22,6 +31,13 @@ export const getAuthContext = cache(async () => {
   } = await supabase.auth.getUser();
 
   if (userError) {
+    if (isMissingSessionError(userError)) {
+      return {
+        user: null,
+        profile: null,
+      };
+    }
+
     throw userError;
   }
 
