@@ -12,6 +12,17 @@ export type CreateExpertFormState = {
   createdEmail?: string;
 };
 
+export type ImportExpertsFormState = {
+  status: "idle" | "success" | "error" | "partial";
+  message?: string;
+  summary?: {
+    processed: number;
+    created: number;
+    failed: number;
+  };
+  failures?: string[];
+};
+
 export type ResendInviteFormState = {
   status: "idle" | "success" | "error";
   message: string;
@@ -76,8 +87,170 @@ type ProfilesSelectBuilder = {
   };
 };
 
+type InviteExpertInput = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  institutionName: string;
+};
+
+type InviteExpertResult =
+  | {
+      ok: true;
+      authUserId: string;
+      profileId: string;
+      email: string;
+    }
+  | {
+      ok: false;
+      email: string;
+      message: string;
+    };
+
+const MAX_CSV_IMPORT_ROWS = 50;
+const MAX_CSV_FILE_SIZE_BYTES = 1024 * 1024;
+
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeCsvHeader(value: string) {
+  return value
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function parseCsv(content: string) {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentValue = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+
+    if (character === '"') {
+      const nextCharacter = content[index + 1];
+
+      if (inQuotes && nextCharacter === '"') {
+        currentValue += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+
+      continue;
+    }
+
+    if (character === "," && !inQuotes) {
+      currentRow.push(currentValue);
+      currentValue = "";
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !inQuotes) {
+      if (character === "\r" && content[index + 1] === "\n") {
+        index += 1;
+      }
+
+      currentRow.push(currentValue);
+      rows.push(currentRow);
+      currentRow = [];
+      currentValue = "";
+      continue;
+    }
+
+    currentValue += character;
+  }
+
+  if (currentValue.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentValue);
+    rows.push(currentRow);
+  }
+
+  return rows;
+}
+
+async function logAdminAction(
+  adminActionLogsTable: AdminActionLogsInsertBuilder,
+  values: {
+    admin_profile_id: string;
+    action_type: string;
+    target_table: string;
+    target_id: string;
+    metadata: Record<string, string>;
+  },
+) {
+  const { error } = await adminActionLogsTable.insert(values);
+
+  if (error) {
+    console.error("Unable to write admin action log", error);
+  }
+}
+
+async function inviteExpertAccount(
+  adminClient: ReturnType<typeof createAdminSupabaseClient>,
+  input: InviteExpertInput,
+): Promise<InviteExpertResult> {
+  const profilesTable = adminClient.from(
+    "profiles",
+  ) as unknown as ProfilesInsertBuilder;
+  const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
+
+  const { data: authData, error: authError } =
+    await adminClient.auth.admin.inviteUserByEmail(input.email, {
+      redirectTo,
+      data: {
+        first_name: input.firstName,
+        last_name: input.lastName,
+        institution_name: input.institutionName || null,
+        role: "expert",
+      },
+    });
+
+  if (authError || !authData.user) {
+    return {
+      ok: false as const,
+      email: input.email,
+      message:
+        authError?.message ?? "Impossibile creare e invitare l'esperto.",
+    };
+  }
+
+  const { data: createdProfile, error: profileError } = await profilesTable
+    .insert({
+      auth_user_id: authData.user.id,
+      email: input.email,
+      first_name: input.firstName,
+      last_name: input.lastName,
+      institution_name: input.institutionName || null,
+      role: "expert",
+      must_reset_password: true,
+      is_active: true,
+    })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (profileError || !createdProfile) {
+    await adminClient.auth.admin.deleteUser(authData.user.id);
+
+    return {
+      ok: false as const,
+      email: input.email,
+      message:
+        profileError?.message ??
+        "L'utente di autenticazione e' stato creato, ma non e' stato possibile salvare il profilo applicativo.",
+    };
+  }
+
+  return {
+    ok: true as const,
+    authUserId: authData.user.id,
+    profileId: createdProfile.id,
+    email: input.email,
+  };
 }
 
 export async function createExpertAction(
@@ -106,72 +279,35 @@ export async function createExpertAction(
   }
 
   const adminClient = createAdminSupabaseClient();
-  const profilesTable = adminClient.from(
-    "profiles",
-  ) as unknown as ProfilesInsertBuilder;
   const adminActionLogsTable = adminClient.from(
     "admin_action_logs",
   ) as unknown as AdminActionLogsInsertBuilder;
+  const inviteResult = await inviteExpertAccount(adminClient, {
+    email,
+    firstName,
+    lastName,
+    institutionName,
+  });
+
+  if (!inviteResult.ok) {
+    return {
+      status: "error",
+      message: inviteResult.message,
+    };
+  }
 
   const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
-
-  const { data: authData, error: authError } =
-    await adminClient.auth.admin.inviteUserByEmail(email, {
-      redirectTo,
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-        institution_name: institutionName || null,
-        role: "expert",
-      },
-    });
-
-  if (authError || !authData.user) {
-    return {
-      status: "error",
-      message: authError?.message ?? "Impossibile creare e invitare l'esperto.",
-    };
-  }
-
-  const { data: createdProfile, error: profileError } = await profilesTable
-    .insert({
-      auth_user_id: authData.user.id,
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      institution_name: institutionName || null,
-      role: "expert",
-      must_reset_password: true,
-      is_active: true,
-    })
-    .select("id")
-    .single<{ id: string }>();
-
-  if (profileError || !createdProfile) {
-    await adminClient.auth.admin.deleteUser(authData.user.id);
-
-    return {
-      status: "error",
-      message:
-        profileError?.message ??
-        "L'utente di autenticazione e' stato creato, ma non e' stato possibile salvare il profilo applicativo.",
-    };
-  }
-
-  const { error: logError } = await adminActionLogsTable.insert({
+  await logAdminAction(adminActionLogsTable, {
     admin_profile_id: profile.id,
     action_type: "expert_invited",
     target_table: "profiles",
-    target_id: createdProfile.id,
+    target_id: inviteResult.profileId,
     metadata: {
       email,
       redirect_to: redirectTo,
+      source: "single_create",
     },
   });
-
-  if (logError) {
-    console.error("Unable to write admin action log", logError);
-  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/experts");
@@ -180,6 +316,182 @@ export async function createExpertAction(
     status: "success",
     message: "Account esperto creato ed email di invito inviata.",
     createdEmail: email,
+  };
+}
+
+export async function importExpertsAction(
+  _previousState: ImportExpertsFormState,
+  formData: FormData,
+): Promise<ImportExpertsFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono importare esperti.",
+    };
+  }
+
+  const csvFile = formData.get("csvFile");
+
+  if (!(csvFile instanceof File) || csvFile.size === 0) {
+    return {
+      status: "error",
+      message: "Seleziona un file CSV da importare.",
+    };
+  }
+
+  if (csvFile.size > MAX_CSV_FILE_SIZE_BYTES) {
+    return {
+      status: "error",
+      message: "Il file CSV e' troppo grande. Mantieni il file sotto 1 MB.",
+    };
+  }
+
+  const csvContent = await csvFile.text();
+  const rows = parseCsv(csvContent)
+    .map((row) => row.map((cell) => cell.trim()))
+    .filter((row) => row.some((cell) => cell.length > 0));
+
+  if (rows.length < 2) {
+    return {
+      status: "error",
+      message:
+        "Il file CSV deve includere una riga di intestazione e almeno un esperto.",
+    };
+  }
+
+  const headerMap = new Map<string, number>();
+
+  rows[0].forEach((header, index) => {
+    headerMap.set(normalizeCsvHeader(header), index);
+  });
+
+  const firstNameIndex =
+    headerMap.get("first_name") ??
+    headerMap.get("nome") ??
+    headerMap.get("name");
+  const lastNameIndex =
+    headerMap.get("last_name") ??
+    headerMap.get("cognome") ??
+    headerMap.get("surname");
+  const emailIndex = headerMap.get("email") ?? headerMap.get("e-mail");
+  const institutionIndex =
+    headerMap.get("institution_name") ??
+    headerMap.get("istituzione") ??
+    headerMap.get("institution") ??
+    headerMap.get("organization");
+
+  if (
+    firstNameIndex === undefined ||
+    lastNameIndex === undefined ||
+    emailIndex === undefined
+  ) {
+    return {
+      status: "error",
+      message:
+        "Intestazioni CSV non valide. Usa almeno: first_name, last_name, email. institution_name e' opzionale.",
+    };
+  }
+
+  const dataRows = rows.slice(1);
+
+  if (dataRows.length > MAX_CSV_IMPORT_ROWS) {
+    return {
+      status: "error",
+      message: `Importa al massimo ${MAX_CSV_IMPORT_ROWS} esperti per volta per mantenere controllabile l'invio delle email.`,
+    };
+  }
+
+  const adminClient = createAdminSupabaseClient();
+  const adminActionLogsTable = adminClient.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
+  const failures: string[] = [];
+  const seenEmails = new Set<string>();
+  let created = 0;
+
+  for (const [index, row] of dataRows.entries()) {
+    const lineNumber = index + 2;
+    const firstName = (row[firstNameIndex] ?? "").trim();
+    const lastName = (row[lastNameIndex] ?? "").trim();
+    const email = (row[emailIndex] ?? "").trim().toLowerCase();
+    const institutionName =
+      institutionIndex === undefined ? "" : (row[institutionIndex] ?? "").trim();
+
+    if (!firstName || !lastName || !email) {
+      failures.push(
+        `Riga ${lineNumber}: nome, cognome ed email sono obbligatori.`,
+      );
+      continue;
+    }
+
+    if (seenEmails.has(email)) {
+      failures.push(`Riga ${lineNumber}: email duplicata nel file (${email}).`);
+      continue;
+    }
+
+    seenEmails.add(email);
+
+    const inviteResult = await inviteExpertAccount(adminClient, {
+      email,
+      firstName,
+      lastName,
+      institutionName,
+    });
+
+    if (!inviteResult.ok) {
+      failures.push(`Riga ${lineNumber} (${email}): ${inviteResult.message}`);
+      continue;
+    }
+
+    created += 1;
+
+    await logAdminAction(adminActionLogsTable, {
+      admin_profile_id: profile.id,
+      action_type: "expert_invited",
+      target_table: "profiles",
+      target_id: inviteResult.profileId,
+      metadata: {
+        email,
+        redirect_to: redirectTo,
+        source: "csv_import",
+      },
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/experts");
+
+  const failed = failures.length;
+  const processed = dataRows.length;
+
+  if (created === 0) {
+    return {
+      status: "error",
+      message: "Nessun esperto e' stato importato.",
+      summary: {
+        processed,
+        created,
+        failed,
+      },
+      failures,
+    };
+  }
+
+  return {
+    status: failed > 0 ? "partial" : "success",
+    message:
+      failed > 0
+        ? `Import completato con errori: ${created} inviti inviati, ${failed} righe non importate.`
+        : `Import completato: ${created} esperti creati e invitati.`,
+    summary: {
+      processed,
+      created,
+      failed,
+    },
+    failures,
   };
 }
 
@@ -258,7 +570,7 @@ export async function resendExpertInviteAction(
     };
   }
 
-  const { error: logError } = await adminActionLogsTable.insert({
+  await logAdminAction(adminActionLogsTable, {
     admin_profile_id: profile.id,
     action_type: "expert_access_email_resent",
     target_table: "profiles",
@@ -268,10 +580,6 @@ export async function resendExpertInviteAction(
       redirect_to: redirectTo,
     },
   });
-
-  if (logError) {
-    console.error("Unable to write admin action log", logError);
-  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/experts");

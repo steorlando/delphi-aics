@@ -1,4 +1,5 @@
 import { CreateExpertForm } from "@/features/admin/experts/create-expert-form";
+import { ImportExpertsForm } from "@/features/admin/experts/import-experts-form";
 import { getExpertsDirectory } from "@/features/admin/experts/queries";
 import { ResendInviteButton } from "@/features/admin/experts/resend-invite-button";
 
@@ -16,6 +17,7 @@ export default async function AdminExpertsPage() {
   return (
     <div className="admin-experts-layout">
       <CreateExpertForm />
+      <ImportExpertsForm />
 
       <section className="panel-card panel-card-wide admin-table-column admin-table-panel">
         <div className="section-heading">
