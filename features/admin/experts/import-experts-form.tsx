@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useActionState } from "react";
+import { useState } from "react";
 import {
   importExpertsAction,
   type ImportExpertsFormState,
@@ -16,6 +17,7 @@ export function ImportExpertsForm() {
     importExpertsAction,
     initialImportExpertsFormState,
   );
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -33,19 +35,13 @@ export function ImportExpertsForm() {
           Ogni riga valida crea l&apos;account esperto e invia subito l&apos;email di invito
           Supabase per il primo accesso.
         </p>
-      </div>
-
-      <div className="import-help">
-        <p className="muted">
-          Intestazioni accettate: <strong>first_name</strong>,{" "}
-          <strong>last_name</strong>, <strong>email</strong>.{" "}
-          <strong>institution_name</strong> e&apos; opzionale.
-        </p>
-        <p className="muted">
-          Sono accettate anche intestazioni italiane come <strong>nome</strong>,{" "}
-          <strong>cognome</strong> e <strong>istituzione</strong>. Per sicurezza,
-          importa al massimo 50 esperti per volta.
-        </p>
+        <button
+          className="inline-link-button"
+          onClick={() => setIsInstructionsOpen(true)}
+          type="button"
+        >
+          Istruzioni per creare il CSV
+        </button>
       </div>
 
       {state.status === "error" ? (
@@ -92,6 +88,55 @@ export function ImportExpertsForm() {
           </button>
         </div>
       </form>
+
+      {isInstructionsOpen ? (
+        <div
+          aria-labelledby="csv-instructions-title"
+          aria-modal="true"
+          className="modal-backdrop"
+          onClick={() => setIsInstructionsOpen(false)}
+          role="dialog"
+        >
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-card-header">
+              <div>
+                <span className="eyebrow">Guida CSV</span>
+                <h3 id="csv-instructions-title">Istruzioni per creare il CSV</h3>
+              </div>
+              <button
+                aria-label="Chiudi istruzioni CSV"
+                className="secondary-button small-button"
+                onClick={() => setIsInstructionsOpen(false)}
+                type="button"
+              >
+                Chiudi
+              </button>
+            </div>
+
+            <div className="import-help">
+              <p className="muted">
+                Intestazioni accettate: <strong>first_name</strong>,{" "}
+                <strong>last_name</strong>, <strong>email</strong>.{" "}
+                <strong>institution_name</strong> e&apos; opzionale.
+              </p>
+              <p className="muted">
+                Sono accettate anche intestazioni italiane come <strong>nome</strong>,{" "}
+                <strong>cognome</strong> e <strong>istituzione</strong>.
+              </p>
+              <p className="muted">
+                Importa al massimo 50 esperti per volta e usa un file CSV sotto 1 MB.
+              </p>
+              <div className="csv-example">
+                <code>first_name,last_name,email,institution_name</code>
+                <code>Mario,Rossi,mario.rossi@example.com,Comune di Roma</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

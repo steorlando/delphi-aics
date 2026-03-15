@@ -16,8 +16,10 @@ export default async function AdminExpertsPage() {
 
   return (
     <div className="admin-experts-layout">
-      <CreateExpertForm />
-      <ImportExpertsForm />
+      <div className="admin-experts-actions">
+        <CreateExpertForm />
+        <ImportExpertsForm />
+      </div>
 
       <section className="panel-card panel-card-wide admin-table-column admin-table-panel">
         <div className="section-heading">

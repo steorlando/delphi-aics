@@ -52,7 +52,7 @@ export function CreateExpertForm() {
       ) : null}
 
       <form ref={formRef} action={formAction} className="auth-form compact-form compact-create-form">
-        <div className="compact-create-grid">
+        <div className="compact-create-fields">
           <label className="field compact-inline-field">
             <span>Nome</span>
             <input name="firstName" required type="text" />
@@ -78,12 +78,12 @@ export function CreateExpertForm() {
             <span>Istituzione</span>
             <input name="institutionName" type="text" />
           </label>
+        </div>
 
-          <div className="compact-form-actions compact-inline-action">
-            <button className="primary-button compact-inline-button" disabled={isPending} type="submit">
-              {isPending ? "Creazione e invio invito..." : "Crea esperto e invia invito"}
-            </button>
-          </div>
+        <div className="compact-form-actions">
+          <button className="primary-button" disabled={isPending} type="submit">
+            {isPending ? "Creazione e invio invito..." : "Crea esperto e invia invito"}
+          </button>
         </div>
       </form>
     </section>
