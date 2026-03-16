@@ -30,8 +30,13 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get("type");
   const next = requestUrl.searchParams.get("next") ?? "/";
   const safeNext = next.startsWith("/") ? next : "/";
+  const redirectUrl = new URL(safeNext, requestUrl.origin);
 
-  const response = NextResponse.redirect(new URL(safeNext, requestUrl.origin));
+  if (type === "recovery") {
+    redirectUrl.searchParams.set("mode", "recovery");
+  }
+
+  const response = NextResponse.redirect(redirectUrl);
 
   const supabase = createServerClient(
     getSupabaseUrl(),

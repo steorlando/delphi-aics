@@ -59,7 +59,7 @@ export function LoginForm() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password?mode=recovery`;
+      const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(
         normalizedEmail,
         {
