@@ -23,6 +23,16 @@ export type ImportExpertsFormState = {
   failures?: string[];
 };
 
+export type UpdateExpertFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
+export type DeleteExpertFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
 export type ResendInviteFormState = {
   status: "idle" | "success" | "error";
   message: string;
@@ -76,6 +86,11 @@ type ExpertProfileLookup = {
   is_active: boolean;
 };
 
+type ExpertProfileActionLookup = ExpertProfileLookup & {
+  auth_user_id: string;
+  role: "expert" | "admin";
+};
+
 type ProfilesSelectBuilder = {
   select(columns: string): {
     eq(column: string, value: string): {
@@ -84,6 +99,30 @@ type ProfilesSelectBuilder = {
         error: AppError | null;
       }>;
     };
+  };
+};
+
+type ProfilesUpdateBuilder = {
+  update(values: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    institution_name: string | null;
+    is_active: boolean;
+  }): {
+    eq(column: string, value: string): {
+      select(columns: string): {
+        single<T>(): Promise<{
+          data: T | null;
+          error: AppError | null;
+        }>;
+      };
+    };
+  };
+  delete(): {
+    eq(column: string, value: string): Promise<{
+      error: AppError | null;
+    }>;
   };
 };
 
@@ -492,6 +531,244 @@ export async function importExpertsAction(
       failed,
     },
     failures,
+  };
+}
+
+export async function updateExpertAction(
+  _previousState: UpdateExpertFormState,
+  formData: FormData,
+): Promise<UpdateExpertFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message:
+        "Solo gli amministratori autenticati possono modificare account esperto.",
+    };
+  }
+
+  const profileId = normalizeText(formData.get("profileId"));
+  const firstName = normalizeText(formData.get("firstName"));
+  const lastName = normalizeText(formData.get("lastName"));
+  const institutionName = normalizeText(formData.get("institutionName"));
+  const email = normalizeText(formData.get("email")).toLowerCase();
+  const isActive = normalizeText(formData.get("isActive")) === "true";
+
+  if (!profileId) {
+    return {
+      status: "error",
+      message: "Profilo esperto non valido.",
+    };
+  }
+
+  if (!firstName || !lastName || !email) {
+    return {
+      status: "error",
+      message: "Nome, cognome ed email sono obbligatori.",
+    };
+  }
+
+  const adminClient = createAdminSupabaseClient();
+  const profilesLookupTable = adminClient.from(
+    "profiles",
+  ) as unknown as ProfilesSelectBuilder;
+  const profilesMutationTable = adminClient.from(
+    "profiles",
+  ) as unknown as ProfilesUpdateBuilder;
+  const adminActionLogsTable = adminClient.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+
+  const { data: expert, error: expertError } = await profilesLookupTable
+    .select(
+      "id, auth_user_id, email, first_name, last_name, institution_name, role, must_reset_password, is_active",
+    )
+    .eq("id", profileId)
+    .maybeSingle<ExpertProfileActionLookup>();
+
+  if (expertError || !expert || expert.role !== "expert") {
+    return {
+      status: "error",
+      message: expertError?.message ?? "Esperto non trovato.",
+    };
+  }
+
+  const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(
+    expert.auth_user_id,
+    {
+      email,
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        institution_name: institutionName || null,
+        role: "expert",
+      },
+    },
+  );
+
+  if (authUpdateError) {
+    return {
+      status: "error",
+      message:
+        authUpdateError.message ??
+        "Impossibile aggiornare l'account di autenticazione dell'esperto.",
+    };
+  }
+
+  const { data: updatedProfile, error: profileUpdateError } =
+    await profilesMutationTable
+      .update({
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        institution_name: institutionName || null,
+        is_active: isActive,
+      })
+      .eq("id", profileId)
+      .select("id")
+      .single<{ id: string }>();
+
+  if (profileUpdateError || !updatedProfile) {
+    const { error: rollbackError } = await adminClient.auth.admin.updateUserById(
+      expert.auth_user_id,
+      {
+        email: expert.email,
+        user_metadata: {
+          first_name: expert.first_name,
+          last_name: expert.last_name,
+          institution_name: expert.institution_name || null,
+          role: "expert",
+        },
+      },
+    );
+
+    if (rollbackError) {
+      console.error(
+        "Unable to rollback auth user after profile update error",
+        rollbackError,
+      );
+    }
+
+    return {
+      status: "error",
+      message:
+        profileUpdateError?.message ??
+        "Impossibile aggiornare il profilo esperto.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    action_type: "expert_updated",
+    target_table: "profiles",
+    target_id: updatedProfile.id,
+    metadata: {
+      email,
+      previous_email: expert.email,
+      is_active: String(isActive),
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/experts");
+
+  return {
+    status: "success",
+    message: `Esperto aggiornato: ${email}.`,
+  };
+}
+
+export async function deleteExpertAction(
+  _previousState: DeleteExpertFormState,
+  formData: FormData,
+): Promise<DeleteExpertFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message:
+        "Solo gli amministratori autenticati possono eliminare account esperto.",
+    };
+  }
+
+  const profileId = normalizeText(formData.get("profileId"));
+
+  if (!profileId) {
+    return {
+      status: "error",
+      message: "Profilo esperto non valido.",
+    };
+  }
+
+  const adminClient = createAdminSupabaseClient();
+  const profilesLookupTable = adminClient.from(
+    "profiles",
+  ) as unknown as ProfilesSelectBuilder;
+  const profilesMutationTable = adminClient.from(
+    "profiles",
+  ) as unknown as ProfilesUpdateBuilder;
+  const adminActionLogsTable = adminClient.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+
+  const { data: expert, error: expertError } = await profilesLookupTable
+    .select(
+      "id, auth_user_id, email, first_name, last_name, institution_name, role, must_reset_password, is_active",
+    )
+    .eq("id", profileId)
+    .maybeSingle<ExpertProfileActionLookup>();
+
+  if (expertError || !expert || expert.role !== "expert") {
+    return {
+      status: "error",
+      message: expertError?.message ?? "Esperto non trovato.",
+    };
+  }
+
+  const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(
+    expert.auth_user_id,
+  );
+
+  if (authDeleteError) {
+    return {
+      status: "error",
+      message:
+        authDeleteError.message ??
+        "Impossibile eliminare l'account di autenticazione dell'esperto.",
+    };
+  }
+
+  const { error: profileDeleteError } = await profilesMutationTable
+    .delete()
+    .eq("id", profileId);
+
+  if (profileDeleteError) {
+    return {
+      status: "error",
+      message:
+        profileDeleteError.message ??
+        "L'utente Auth e' stato eliminato, ma non e' stato possibile completare la pulizia del profilo applicativo.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    action_type: "expert_deleted",
+    target_table: "profiles",
+    target_id: expert.id,
+    metadata: {
+      email: expert.email,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/experts");
+
+  return {
+    status: "success",
+    message: `Esperto eliminato: ${expert.email}.`,
   };
 }
 

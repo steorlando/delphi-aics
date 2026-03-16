@@ -2,17 +2,17 @@
 
 import { useActionState } from "react";
 import {
-  resendExpertInviteAction,
-  type ResendInviteFormState,
-} from "@/features/admin/experts/actions";
+  resendAdminInviteAction,
+  type ResendAdminInviteFormState,
+} from "@/features/admin/admins/actions";
 
-type ResendInviteButtonProps = {
+type ResendAdminInviteButtonProps = {
   profileId: string;
   compact?: boolean;
 };
 
-const initialState: ResendInviteFormState = {
-  status: "idle" as const,
+const initialState: ResendAdminInviteFormState = {
+  status: "idle",
   message: "",
 };
 
@@ -43,12 +43,12 @@ function MailIcon() {
   );
 }
 
-export function ResendInviteButton({
+export function ResendAdminInviteButton({
   profileId,
   compact = false,
-}: ResendInviteButtonProps) {
+}: ResendAdminInviteButtonProps) {
   const [state, formAction, isPending] = useActionState(
-    resendExpertInviteAction,
+    resendAdminInviteAction,
     initialState,
   );
 
