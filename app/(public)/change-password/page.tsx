@@ -6,7 +6,15 @@ import { getAuthContext } from "@/lib/auth/session";
 import { hasPublicSupabaseEnv } from "@/lib/env";
 import { ChangePasswordForm } from "./change-password-form";
 
-export default async function ChangePasswordPage() {
+type ChangePasswordPageProps = {
+  searchParams: Promise<{
+    mode?: string;
+  }>;
+};
+
+export default async function ChangePasswordPage({
+  searchParams,
+}: ChangePasswordPageProps) {
   if (!hasPublicSupabaseEnv()) {
     return (
       <ConfigurationNotice
@@ -17,6 +25,8 @@ export default async function ChangePasswordPage() {
   }
 
   const { user, profile } = await getAuthContext();
+  const { mode } = await searchParams;
+  const isRecoveryMode = mode === "recovery";
 
   if (!user) {
     redirect("/login");
@@ -26,7 +36,7 @@ export default async function ChangePasswordPage() {
     redirect("/login?error=profile_missing");
   }
 
-  if (!profile.must_reset_password) {
+  if (!profile.must_reset_password && !isRecoveryMode) {
     redirect(getRoleHome(profile.role));
   }
 
@@ -34,13 +44,23 @@ export default async function ChangePasswordPage() {
     <main className="auth-page-shell">
       <section className="auth-card">
         <AicsLogo className="auth-brand" />
-        <span className="eyebrow">Primo accesso</span>
-        <h1>Imposta la tua password personale</h1>
+        <span className="eyebrow">
+          {isRecoveryMode ? "Recupero password" : "Primo accesso"}
+        </span>
+        <h1>
+          {isRecoveryMode
+            ? "Reimposta la tua password"
+            : "Imposta la tua password personale"}
+        </h1>
         <p>
-          Completa il flusso di invito scegliendo la tua password personale
-          prima di poter accedere allo spazio di consultazione.
+          {isRecoveryMode
+            ? "Scegli una nuova password per tornare ad accedere alla piattaforma."
+            : "Completa il flusso di invito scegliendo la tua password personale prima di poter accedere allo spazio di consultazione."}
         </p>
-        <ChangePasswordForm email={profile.email} />
+        <ChangePasswordForm
+          email={profile.email}
+          isRecoveryMode={isRecoveryMode}
+        />
       </section>
     </main>
   );

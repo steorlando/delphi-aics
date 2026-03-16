@@ -6,9 +6,13 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 type ChangePasswordFormProps = {
   email: string;
+  isRecoveryMode?: boolean;
 };
 
-export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
+export function ChangePasswordForm({
+  email,
+  isRecoveryMode = false,
+}: ChangePasswordFormProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,12 +40,14 @@ export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
         throw updateError;
       }
 
-      const { error: rpcError } = await supabase.rpc(
-        "mark_password_reset_complete",
-      );
+      if (!isRecoveryMode) {
+        const { error: rpcError } = await supabase.rpc(
+          "mark_password_reset_complete",
+        );
 
-      if (rpcError) {
-        throw rpcError;
+        if (rpcError) {
+          throw rpcError;
+        }
       }
 
       router.replace("/");
