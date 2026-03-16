@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getAdminsDirectory } from "@/features/admin/admins/queries";
+import { getConsultationsDirectory } from "@/features/admin/consultations/queries";
 import { getExpertsDirectory } from "@/features/admin/experts/queries";
 
 export default async function AdminHomePage() {
   const admins = await getAdminsDirectory();
+  const consultations = await getConsultationsDirectory();
   const experts = await getExpertsDirectory();
 
   return (
@@ -21,12 +23,28 @@ export default async function AdminHomePage() {
             <span className="metric-label">Esperti creati</span>
           </article>
           <article className="metric-card">
+            <span className="metric-value">{consultations.length}</span>
+            <span className="metric-label">Consultazioni configurate</span>
+          </article>
+          <article className="metric-card">
             <span className="metric-value">
               {experts.filter((expert) => expert.must_reset_password).length}
             </span>
             <span className="metric-label">Configurazione password iniziale in attesa</span>
           </article>
         </div>
+      </section>
+
+      <section className="panel-card">
+        <span className="eyebrow">Contenuto</span>
+        <h2>Configura consultazioni e sezioni</h2>
+        <p>
+          Il prossimo flusso operativo parte dalla creazione della consultazione
+          e dalla definizione delle sezioni del documento in HTML.
+        </p>
+        <Link className="primary-link" href="/admin/consultations">
+          Apri gestione consultazioni
+        </Link>
       </section>
 
       <section className="panel-card">
