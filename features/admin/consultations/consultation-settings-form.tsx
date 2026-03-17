@@ -13,6 +13,7 @@ import {
 
 type ConsultationSettingsFormProps = {
   consultation: ConsultationDirectoryEntry;
+  embedded?: boolean;
 };
 
 const initialUpdateConsultationState: UpdateConsultationFormState = {
@@ -22,20 +23,15 @@ const initialUpdateConsultationState: UpdateConsultationFormState = {
 
 export function ConsultationSettingsForm({
   consultation,
+  embedded = false,
 }: ConsultationSettingsFormProps) {
   const [state, formAction, isPending] = useActionState(
     updateConsultationAction,
     initialUpdateConsultationState,
   );
 
-  return (
-    <CollapsiblePanel
-      defaultOpen={false}
-      description="Qui gestisci i metadati principali e lo stato generale della consultazione. Le regole operative di apertura delle fasi saranno raffinate nel prossimo milestone."
-      eyebrow="Impostazioni"
-      forceOpen={state.status !== "idle"}
-      title="Configurazione consultazione"
-    >
+  const formContent = (
+    <>
       {state.status === "error" && state.message ? (
         <p className="form-error">{state.message}</p>
       ) : null}
@@ -109,6 +105,21 @@ export function ConsultationSettingsForm({
           </button>
         </div>
       </form>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="consultation-settings-embedded">{formContent}</div>;
+  }
+
+  return (
+    <CollapsiblePanel
+      defaultOpen={false}
+      eyebrow="Impostazioni"
+      forceOpen={state.status !== "idle"}
+      title="Configurazione consultazione"
+    >
+      {formContent}
     </CollapsiblePanel>
   );
 }

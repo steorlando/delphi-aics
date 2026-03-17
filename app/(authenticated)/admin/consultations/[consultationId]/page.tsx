@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ConsultationSettingsForm } from "@/features/admin/consultations/consultation-settings-form";
+import { ConsultationDetailPanel } from "@/features/admin/consultations/consultation-detail-panel";
 import { CreateDocumentSectionForm } from "@/features/admin/consultations/create-document-section-form";
 import { DocumentSectionsList } from "@/features/admin/consultations/document-sections-list";
 import {
-  formatConsultationStateLabel,
   type DocumentSectionEntry,
 } from "@/features/admin/consultations/shared";
 import { getFigureLibraryState } from "@/features/admin/figures/queries";
@@ -37,23 +35,7 @@ export default async function AdminConsultationDetailPage({
 
   return (
     <div className="stack">
-      <div className="consultation-detail-row">
-        <section className="panel-card panel-card-wide">
-          <span className="eyebrow">Dettaglio consultazione</span>
-          <h2>{consultation.title}</h2>
-          <p>
-            Stato attuale: <strong>{formatConsultationStateLabel(consultation.current_state)}</strong>
-            {" "}· Documento: <strong>{consultation.document_title || "non ancora definito"}</strong>
-          </p>
-          <div className="compact-form-actions">
-            <Link className="secondary-button" href="/admin/consultations">
-              Torna all&apos;elenco consultazioni
-            </Link>
-          </div>
-        </section>
-
-        <ConsultationSettingsForm consultation={consultation} />
-      </div>
+      <ConsultationDetailPanel consultation={consultation} />
 
       <CreateDocumentSectionForm
         availableFigures={figureLibraryState.figures}

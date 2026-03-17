@@ -53,7 +53,6 @@ export function CreateDocumentSectionForm({
   return (
     <CollapsiblePanel
       defaultOpen={false}
-      description="Inserisci il contenuto della sezione in HTML. Per ora usiamo un campo testuale semplice, cosi' restiamo leggeri e incrementali."
       eyebrow="Sezioni documento"
       forceOpen={state.status !== "idle"}
       title="Aggiungi una nuova sezione"
