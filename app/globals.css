@@ -113,6 +113,7 @@ p {
 
 strong {
   color: var(--text);
+  font-weight: 700;
 }
 
 code {
@@ -843,6 +844,12 @@ input {
   color: var(--success);
 }
 
+.figure-callout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 .compact-create-panel {
   gap: 0.75rem;
   max-width: none;
@@ -998,6 +1005,10 @@ input {
   background: var(--surface-muted);
 }
 
+.document-rendered-content {
+  min-width: 0;
+}
+
 .compact-inline-field {
   min-width: 0;
 }
@@ -1011,6 +1022,16 @@ input {
 .section-body-editor-shell {
   display: grid;
   gap: 0.85rem;
+}
+
+.field-hint a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.field-hint a:hover,
+.field-hint a:focus-visible {
+  color: var(--accent-strong);
 }
 
 .section-body-editor-panel {
@@ -1058,6 +1079,31 @@ input {
 .wysiwyg-editor ul,
 .wysiwyg-editor ol {
   margin: 0 0 0.8rem;
+}
+
+.document-rendered-content figure,
+.wysiwyg-editor figure {
+  width: 100%;
+  max-width: 100%;
+  margin: 1.2rem auto;
+  text-align: center;
+}
+
+.document-rendered-content img,
+.wysiwyg-editor img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.document-rendered-content figcaption,
+.wysiwyg-editor figcaption {
+  margin-top: 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .wysiwyg-editor ul,
@@ -1227,6 +1273,125 @@ input {
   align-items: flex-start;
   flex-wrap: nowrap;
   gap: 0.45rem;
+}
+
+.figure-library-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.figure-library-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.figure-library-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.figure-library-card-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.figure-library-card-copy strong {
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.figure-library-card-copy span {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.figure-library-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
+}
+
+.figure-picker-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(18rem, 0.95fr) minmax(0, 1.4fr);
+  align-items: start;
+}
+
+.figure-picker-list {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 34rem;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.figure-picker-item {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  text-align: left;
+}
+
+.figure-picker-item:hover,
+.figure-picker-item:focus-visible,
+.figure-picker-item-selected {
+  border-color: rgba(67, 98, 127, 0.3);
+  background: rgba(67, 98, 127, 0.08);
+}
+
+.figure-picker-item img {
+  width: 100%;
+  max-height: 8.5rem;
+  object-fit: contain;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.figure-picker-item span {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.figure-picker-preview {
+  display: grid;
+  gap: 1rem;
+}
+
+.figure-picker-preview-image {
+  display: grid;
+  place-items: center;
+  min-height: 18rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.figure-picker-preview-image img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 22rem;
+  height: auto;
+}
+
+.empty-figure-picker {
+  padding: 0.4rem 0 0.2rem;
 }
 
 .small-button {

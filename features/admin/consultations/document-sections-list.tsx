@@ -9,12 +9,14 @@ import {
   type UpdateDocumentSectionFormState,
 } from "@/features/admin/consultations/actions";
 import { SectionBodyEditor } from "@/features/admin/consultations/section-body-editor";
+import type { StoredFigureEntry } from "@/features/admin/figures/shared";
 import {
   slugifySectionTitle,
   type DocumentSectionEntry,
 } from "@/features/admin/consultations/shared";
 
 type DocumentSectionsListProps = {
+  availableFigures: StoredFigureEntry[];
   sections: DocumentSectionEntry[];
 };
 
@@ -99,6 +101,7 @@ function SectionPreview({
           <div className="csv-example">
             <strong>Anteprima HTML</strong>
             <div
+              className="document-rendered-content"
               dangerouslySetInnerHTML={{
                 __html: section.body_text ?? "<p class='muted'>Nessun contenuto.</p>",
               }}
@@ -111,9 +114,11 @@ function SectionPreview({
 }
 
 function EditDocumentSectionModal({
+  availableFigures,
   section,
   onClose,
 }: {
+  availableFigures: StoredFigureEntry[];
   section: DocumentSectionEntry;
   onClose: () => void;
 }) {
@@ -264,6 +269,7 @@ function EditDocumentSectionModal({
           </div>
 
           <SectionBodyEditor
+            availableFigures={availableFigures}
             initialValue={section.body_text ?? ""}
             inputName="bodyText"
           />
@@ -314,7 +320,10 @@ function EditDocumentSectionModal({
   );
 }
 
-export function DocumentSectionsList({ sections }: DocumentSectionsListProps) {
+export function DocumentSectionsList({
+  availableFigures,
+  sections,
+}: DocumentSectionsListProps) {
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
   const [editingSection, setEditingSection] = useState<DocumentSectionEntry | null>(null);
 
@@ -342,6 +351,7 @@ export function DocumentSectionsList({ sections }: DocumentSectionsListProps) {
 
       {editingSection ? (
         <EditDocumentSectionModal
+          availableFigures={availableFigures}
           onClose={() => setEditingSection(null)}
           section={editingSection}
         />

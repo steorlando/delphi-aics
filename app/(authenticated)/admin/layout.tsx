@@ -15,6 +15,10 @@ const adminLinks = [
     label: "Consultazioni",
   },
   {
+    href: "/admin/figures",
+    label: "Figure",
+  },
+  {
     href: "/admin/admins",
     label: "Amministratori",
   },

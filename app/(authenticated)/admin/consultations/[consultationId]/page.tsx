@@ -7,6 +7,7 @@ import {
   formatConsultationStateLabel,
   type DocumentSectionEntry,
 } from "@/features/admin/consultations/shared";
+import { getFigureLibraryState } from "@/features/admin/figures/queries";
 import {
   getConsultationById,
   getDocumentSectionsByConsultationId,
@@ -22,9 +23,10 @@ export default async function AdminConsultationDetailPage({
   params,
 }: AdminConsultationDetailPageProps) {
   const { consultationId } = await params;
-  const [consultation, sections] = await Promise.all([
+  const [consultation, sections, figureLibraryState] = await Promise.all([
     getConsultationById(consultationId),
     getDocumentSectionsByConsultationId(consultationId),
+    getFigureLibraryState(),
   ]);
 
   if (!consultation) {
@@ -54,6 +56,7 @@ export default async function AdminConsultationDetailPage({
       </div>
 
       <CreateDocumentSectionForm
+        availableFigures={figureLibraryState.figures}
         consultationId={consultation.id}
         nextOrderIndex={nextOrderIndex}
       />
@@ -77,7 +80,10 @@ export default async function AdminConsultationDetailPage({
             sottoporre agli esperti.
           </p>
         ) : (
-          <DocumentSectionsList sections={sections} />
+          <DocumentSectionsList
+            availableFigures={figureLibraryState.figures}
+            sections={sections}
+          />
         )}
       </section>
     </div>

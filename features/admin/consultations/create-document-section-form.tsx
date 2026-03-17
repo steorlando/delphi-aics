@@ -9,8 +9,10 @@ import {
 import { CollapsiblePanel } from "@/features/admin/consultations/collapsible-panel";
 import { SectionBodyEditor } from "@/features/admin/consultations/section-body-editor";
 import { slugifySectionTitle } from "@/features/admin/consultations/shared";
+import type { StoredFigureEntry } from "@/features/admin/figures/shared";
 
 type CreateDocumentSectionFormProps = {
+  availableFigures: StoredFigureEntry[];
   consultationId: string;
   nextOrderIndex: number;
 };
@@ -20,6 +22,7 @@ const initialCreateDocumentSectionState: CreateDocumentSectionFormState = {
 };
 
 export function CreateDocumentSectionForm({
+  availableFigures,
   consultationId,
   nextOrderIndex,
 }: CreateDocumentSectionFormProps) {
@@ -133,7 +136,10 @@ export function CreateDocumentSectionForm({
           </label>
         </div>
 
-        <SectionBodyEditor inputName="bodyText" />
+        <SectionBodyEditor
+          availableFigures={availableFigures}
+          inputName="bodyText"
+        />
 
         <label className="field">
           <span>Sezione attiva</span>
