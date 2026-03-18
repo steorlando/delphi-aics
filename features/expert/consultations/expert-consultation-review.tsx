@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createExpertSectionCommentAction,
+  deleteExpertSectionCommentAction,
   updateExpertSectionCommentAction,
   type CreateExpertSectionCommentFormState,
 } from "@/features/expert/consultations/actions";
@@ -112,6 +113,44 @@ function PencilIcon() {
       />
       <path
         d="m13.5 7.5 3 3"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.7"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="14"
+      viewBox="0 0 24 24"
+      width="14"
+    >
+      <path
+        d="M5 7h14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M9 7V5.75A1.75 1.75 0 0 1 10.75 4h2.5A1.75 1.75 0 0 1 15 5.75V7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M7 7l.7 11.1A1.75 1.75 0 0 0 9.44 19.75h5.12a1.75 1.75 0 0 0 1.74-1.65L17 7"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M10 10.5v5M14 10.5v5"
         stroke="currentColor"
         strokeLinecap="round"
         strokeWidth="1.7"
@@ -258,6 +297,10 @@ function EditCommentInlineForm({
     updateExpertSectionCommentAction,
     initialCommentState,
   );
+  const [deleteState, deleteAction, isDeleting] = useActionState(
+    deleteExpertSectionCommentAction,
+    initialCommentState,
+  );
 
   useEffect(() => {
     if (state.status === "success") {
@@ -265,6 +308,13 @@ function EditCommentInlineForm({
       router.refresh();
     }
   }, [onCancel, router, state.status]);
+
+  useEffect(() => {
+    if (deleteState.status === "success") {
+      onCancel();
+      router.refresh();
+    }
+  }, [deleteState.status, onCancel, router]);
 
   return (
     <form action={formAction} className="auth-form expert-review-inline-edit-form">
@@ -279,6 +329,14 @@ function EditCommentInlineForm({
 
       {state.status === "success" && state.message ? (
         <p className="form-success expert-review-inline-feedback">{state.message}</p>
+      ) : null}
+
+      {deleteState.status === "error" && deleteState.message ? (
+        <p className="form-error expert-review-inline-feedback">{deleteState.message}</p>
+      ) : null}
+
+      {deleteState.status === "success" && deleteState.message ? (
+        <p className="form-success expert-review-inline-feedback">{deleteState.message}</p>
       ) : null}
 
       <label className="field">
@@ -329,7 +387,7 @@ function EditCommentInlineForm({
       <div className="compact-form-actions expert-review-form-actions">
         <button
           className="secondary-button small-button"
-          disabled={isPending}
+          disabled={isPending || isDeleting}
           onClick={onCancel}
           type="button"
         >
@@ -337,9 +395,20 @@ function EditCommentInlineForm({
         </button>
 
         <button
+          aria-label={isDeleting ? "Eliminazione commento in corso" : "Elimina commento"}
+          className="secondary-button small-button icon-action-button destructive-button"
+          disabled={isPending || isDeleting}
+          formAction={deleteAction}
+          type="submit"
+        >
+          <TrashIcon />
+          <span className="sr-only">Elimina commento</span>
+        </button>
+
+        <button
           aria-label={isPending ? "Aggiornamento commento in corso" : "Aggiorna commento"}
           className="primary-button small-button icon-action-button expert-review-submit-button"
-          disabled={!canSubmitComments || isPending}
+          disabled={!canSubmitComments || isPending || isDeleting}
           type="submit"
         >
           <PaperPlaneIcon />

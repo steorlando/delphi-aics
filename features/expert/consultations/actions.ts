@@ -58,6 +58,28 @@ type ExpertSectionCommentsUpdateBuilder = {
   };
 };
 
+type ExpertSectionCommentsSoftDeleteBuilder = {
+  update(values: {
+    is_active: boolean;
+    updated_at: string;
+  }): {
+    eq(column: string, value: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): {
+          eq(column: string, value: string): {
+            select(columns: string): {
+              maybeSingle<T>(): Promise<{
+                data: T | null;
+                error: AppError | null;
+              }>;
+            };
+          };
+        };
+      };
+    };
+  };
+};
+
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -388,5 +410,129 @@ export async function updateExpertSectionCommentAction(
   return {
     status: "success",
     message: "Commento aggiornato correttamente.",
+  };
+}
+
+export async function deleteExpertSectionCommentAction(
+  _previousState: CreateExpertSectionCommentFormState,
+  formData: FormData,
+): Promise<CreateExpertSectionCommentFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "expert") {
+    return {
+      status: "error",
+      message: "Solo gli esperti autenticati possono eliminare commenti.",
+    };
+  }
+
+  const commentId = normalizeText(formData.get("commentId"));
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const sectionId = normalizeText(formData.get("sectionId"));
+
+  if (!commentId) {
+    return {
+      status: "error",
+      message: "Commento non valido.",
+    };
+  }
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  if (!sectionId) {
+    return {
+      status: "error",
+      message: "Sezione non valida.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const assignmentQuery = supabase
+    .from("consultation_participants")
+    .select("consultation_id")
+    .eq("consultation_id", consultationId)
+    .eq("profile_id", profile.id)
+    .eq("is_active", true)
+    .maybeSingle<{ consultation_id: string }>() as unknown as Promise<{
+    data: { consultation_id: string } | null;
+    error: AppError | null;
+  }>;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id, current_state, is_active")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string; current_state: ConsultationState; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; current_state: ConsultationState; is_active: boolean } | null;
+    error: AppError | null;
+  }>;
+
+  const [
+    { data: assignment, error: assignmentError },
+    { data: consultation, error: consultationError },
+  ] = await Promise.all([assignmentQuery, consultationQuery]);
+
+  if (assignmentError || !assignment) {
+    return {
+      status: "error",
+      message:
+        assignmentError?.message ||
+        "Non puoi eliminare commenti per una consultazione non assegnata.",
+    };
+  }
+
+  if (consultationError || !consultation || !consultation.is_active) {
+    return {
+      status: "error",
+      message:
+        consultationError?.message ||
+        "Consultazione non disponibile.",
+    };
+  }
+
+  if (!canExpertSubmitSectionComments(consultation.current_state)) {
+    return {
+      status: "error",
+      message:
+        "L'eliminazione dei commenti e' disponibile solo quando la consultazione e' nella fase Commenti.",
+    };
+  }
+
+  const commentsTable = supabase.from(
+    "expert_section_comments",
+  ) as unknown as ExpertSectionCommentsSoftDeleteBuilder;
+  const deleteQuery = commentsTable
+    .update({
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", commentId)
+    .eq("expert_profile_id", profile.id)
+    .eq("consultation_id", consultationId)
+    .eq("section_id", sectionId)
+    .select("id")
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await deleteQuery;
+
+  if (error || !data) {
+    return {
+      status: "error",
+      message: error?.message || "Impossibile eliminare il commento.",
+    };
+  }
+
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
+
+  return {
+    status: "success",
+    message: "Commento eliminato correttamente.",
   };
 }

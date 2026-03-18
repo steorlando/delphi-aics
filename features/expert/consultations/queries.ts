@@ -175,7 +175,7 @@ export async function getExpertSectionComments(
     .eq("consultation_id", consultationId)
     .eq("expert_profile_id", profileId)
     .eq("is_active", true)
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: true })
     .returns<ExpertSectionCommentEntry[]>() as unknown as Promise<{
     data: ExpertSectionCommentEntry[] | null;
     error: AppError | null;
