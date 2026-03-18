@@ -14,6 +14,7 @@ import {
 type ConsultationSettingsFormProps = {
   consultation: ConsultationDirectoryEntry;
   embedded?: boolean;
+  participantCount?: number;
 };
 
 const initialUpdateConsultationState: UpdateConsultationFormState = {
@@ -24,11 +25,14 @@ const initialUpdateConsultationState: UpdateConsultationFormState = {
 export function ConsultationSettingsForm({
   consultation,
   embedded = false,
+  participantCount = 0,
 }: ConsultationSettingsFormProps) {
   const [state, formAction, isPending] = useActionState(
     updateConsultationAction,
     initialUpdateConsultationState,
   );
+  const isPhaseOneBlocked =
+    participantCount < 1 && consultation.current_state !== "phase_1_open";
 
   const formContent = (
     <>
@@ -69,7 +73,11 @@ export function ConsultationSettingsForm({
             <span>Fase consultazione</span>
             <select defaultValue={consultation.current_state} name="currentState">
               {getConsultationStateSelectOptions(consultation.current_state).map((option) => (
-                <option key={option.value} value={option.value}>
+                <option
+                  disabled={isPhaseOneBlocked && option.value === "phase_1_open"}
+                  key={option.value}
+                  value={option.value}
+                >
                   {option.label}
                 </option>
               ))}
@@ -78,6 +86,17 @@ export function ConsultationSettingsForm({
               La UI mostra le 4 fasi operative principali. Alcuni stati avanzati
               del database restano comunque disponibili internamente.
             </p>
+            {isPhaseOneBlocked ? (
+              <p className="field-hint">
+                Per passare a <strong>Commenti</strong> devi prima assegnare almeno
+                un expert alla consultazione. Attualmente gli expert assegnati sono{" "}
+                <strong>{participantCount}</strong>.
+              </p>
+            ) : (
+              <p className="field-hint">
+                Expert assegnati alla consultazione: <strong>{participantCount}</strong>.
+              </p>
+            )}
           </label>
         </div>
 

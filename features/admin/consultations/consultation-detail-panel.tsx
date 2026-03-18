@@ -57,7 +57,11 @@ export function ConsultationDetailPanel({
       </div>
 
       {isSettingsOpen ? (
-        <ConsultationSettingsForm consultation={consultation} embedded />
+        <ConsultationSettingsForm
+          consultation={consultation}
+          embedded
+          participantCount={participantCount}
+        />
       ) : null}
     </section>
   );
