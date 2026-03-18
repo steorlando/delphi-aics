@@ -10,10 +10,12 @@ import {
 
 type ConsultationDetailPanelProps = {
   consultation: ConsultationDirectoryEntry;
+  participantCount: number;
 };
 
 export function ConsultationDetailPanel({
   consultation,
+  participantCount,
 }: ConsultationDetailPanelProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -27,6 +29,7 @@ export function ConsultationDetailPanel({
             <p>
               Stato attuale:{" "}
               <strong>{formatConsultationStateLabel(consultation.current_state)}</strong>
+              {" "}· Esperti assegnati: <strong>{participantCount}</strong>
               {" "}· Documento:{" "}
               <strong>{consultation.document_title || "non ancora definito"}</strong>
             </p>

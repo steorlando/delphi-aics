@@ -1,13 +1,16 @@
 import { notFound } from "next/navigation";
 import { ConsultationDetailPanel } from "@/features/admin/consultations/consultation-detail-panel";
+import { ConsultationParticipantsManager } from "@/features/admin/consultations/consultation-participants-manager";
 import { CreateDocumentSectionForm } from "@/features/admin/consultations/create-document-section-form";
 import { DocumentSectionsList } from "@/features/admin/consultations/document-sections-list";
 import {
   type DocumentSectionEntry,
 } from "@/features/admin/consultations/shared";
 import { getFigureLibraryState } from "@/features/admin/figures/queries";
+import { getExpertsDirectory } from "@/features/admin/experts/queries";
 import {
   getConsultationById,
+  getConsultationParticipantsByConsultationId,
   getDocumentSectionsByConsultationId,
 } from "@/features/admin/consultations/queries";
 
@@ -21,10 +24,12 @@ export default async function AdminConsultationDetailPage({
   params,
 }: AdminConsultationDetailPageProps) {
   const { consultationId } = await params;
-  const [consultation, sections, figureLibraryState] = await Promise.all([
+  const [consultation, sections, figureLibraryState, experts, participants] = await Promise.all([
     getConsultationById(consultationId),
     getDocumentSectionsByConsultationId(consultationId),
     getFigureLibraryState(),
+    getExpertsDirectory(),
+    getConsultationParticipantsByConsultationId(consultationId),
   ]);
 
   if (!consultation) {
@@ -35,7 +40,16 @@ export default async function AdminConsultationDetailPage({
 
   return (
     <div className="stack">
-      <ConsultationDetailPanel consultation={consultation} />
+      <ConsultationDetailPanel
+        consultation={consultation}
+        participantCount={participants.filter((participant) => participant.is_active).length}
+      />
+
+      <ConsultationParticipantsManager
+        consultationId={consultation.id}
+        experts={experts}
+        participants={participants}
+      />
 
       <CreateDocumentSectionForm
         availableFigures={figureLibraryState.figures}

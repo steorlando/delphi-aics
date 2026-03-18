@@ -76,6 +76,15 @@ export type DocumentSectionEntry = {
   updated_at: string;
 };
 
+export type ConsultationParticipantEntry = {
+  id: string;
+  consultation_id: string;
+  profile_id: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export function formatConsultationStateLabel(state: ConsultationState) {
   return consultationStateLabels[state] ?? state;
 }

@@ -41,6 +41,11 @@ export type DeleteDocumentSectionFormState = {
   message: string;
 };
 
+export type UpdateConsultationParticipantsFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
 type AppError = {
   code?: string;
   message: string;
@@ -151,6 +156,31 @@ type DocumentSectionsUpdateBuilder = {
   };
 };
 
+type ConsultationParticipantsInsertBuilder = {
+  insert(
+    values:
+      | {
+          consultation_id: string;
+          profile_id: string;
+          is_active: boolean;
+        }
+      | {
+          consultation_id: string;
+          profile_id: string;
+          is_active: boolean;
+        }[],
+  ): Promise<{
+    error: AppError | null;
+  }>;
+  delete(): {
+    eq(column: string, value: string): {
+      in(column: string, values: string[]): Promise<{
+        error: AppError | null;
+      }>;
+    };
+  };
+};
+
 function normalizeText(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -183,6 +213,16 @@ function normalizeConsultationState(value: FormDataEntryValue | null) {
   }
 
   return normalized;
+}
+
+function normalizeStringArray(values: FormDataEntryValue[]) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => normalizeText(value))
+        .filter((value) => value.length > 0),
+    ),
+  );
 }
 
 function getConsultationDetailPath(consultationId: string) {
@@ -354,6 +394,36 @@ export async function updateConsultationAction(
   }
 
   const supabase = await createServerSupabaseClient();
+
+  if (currentState === "phase_1_open") {
+    const participantCountQuery = supabase
+      .from("consultation_participants")
+      .select("id", { count: "exact", head: true })
+      .eq("consultation_id", consultationId)
+      .eq("is_active", true) as unknown as Promise<{
+      count: number | null;
+      error: AppError | null;
+    }>;
+    const { count, error: participantCountError } = await participantCountQuery;
+
+    if (participantCountError) {
+      return {
+        status: "error",
+        message:
+          participantCountError.message ||
+          "Impossibile verificare i partecipanti della consultazione.",
+      };
+    }
+
+    if (!count || count < 1) {
+      return {
+        status: "error",
+        message:
+          "Prima di aprire la fase Commenti devi assegnare almeno un esperto alla consultazione.",
+      };
+    }
+  }
+
   const consultationsTable = supabase.from(
     "consultations",
   ) as unknown as ConsultationsUpdateBuilder;
@@ -407,6 +477,154 @@ export async function updateConsultationAction(
   return {
     status: "success",
     message: "Consultazione aggiornata.",
+  };
+}
+
+export async function updateConsultationParticipantsAction(
+  _previousState: UpdateConsultationParticipantsFormState,
+  formData: FormData,
+): Promise<UpdateConsultationParticipantsFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono assegnare esperti.",
+    };
+  }
+
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const selectedProfileIds = normalizeStringArray(formData.getAll("participantProfileIds"));
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const participantsTable = supabase.from(
+    "consultation_participants",
+  ) as unknown as ConsultationParticipantsInsertBuilder;
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const existingParticipantsQuery = supabase
+    .from("consultation_participants")
+    .select("id, profile_id, is_active")
+    .eq("consultation_id", consultationId) as unknown as Promise<{
+    data: { id: string; profile_id: string; is_active: boolean }[] | null;
+    error: AppError | null;
+  }>;
+  const expertProfilesPromise =
+    selectedProfileIds.length > 0
+      ? ((supabase
+          .from("profiles")
+          .select("id")
+          .eq("role", "expert")
+          .in("id", selectedProfileIds)) as unknown as Promise<{
+          data: { id: string }[] | null;
+          error: AppError | null;
+        }>)
+      : Promise.resolve({
+          data: [] as { id: string }[],
+          error: null,
+        });
+  const [
+    { data: existingParticipants, error: existingParticipantsError },
+    { data: expertProfiles, error: expertProfilesError },
+  ] = await Promise.all([existingParticipantsQuery, expertProfilesPromise]);
+
+  if (existingParticipantsError) {
+    return {
+      status: "error",
+      message:
+        existingParticipantsError.message ||
+        "Impossibile leggere i partecipanti attuali della consultazione.",
+    };
+  }
+
+  if (expertProfilesError) {
+    return {
+      status: "error",
+      message:
+        expertProfilesError.message || "Impossibile verificare gli esperti selezionati.",
+    };
+  }
+
+  const validSelectedProfileIds = new Set((expertProfiles ?? []).map((expert) => expert.id));
+  const currentActiveParticipantIds = new Set(
+    (existingParticipants ?? [])
+      .filter((participant) => participant.is_active)
+      .map((participant) => participant.profile_id),
+  );
+  const participantIdsToInsert = Array.from(validSelectedProfileIds).filter(
+    (profileId) => !currentActiveParticipantIds.has(profileId),
+  );
+  const participantIdsToDelete = (existingParticipants ?? [])
+    .filter(
+      (participant) =>
+        !validSelectedProfileIds.has(participant.profile_id) || !participant.is_active,
+    )
+    .map((participant) => participant.profile_id);
+
+  if (participantIdsToDelete.length > 0) {
+    const { error } = await participantsTable
+      .delete()
+      .eq("consultation_id", consultationId)
+      .in("profile_id", participantIdsToDelete);
+
+    if (error) {
+      return {
+        status: "error",
+        message:
+          error.message || "Impossibile aggiornare i partecipanti della consultazione.",
+      };
+    }
+  }
+
+  if (participantIdsToInsert.length > 0) {
+    const { error } = await participantsTable.insert(
+      participantIdsToInsert.map((profileId) => ({
+        consultation_id: consultationId,
+        profile_id: profileId,
+        is_active: true,
+      })),
+    );
+
+    if (error) {
+      return {
+        status: "error",
+        message:
+          error.message || "Impossibile salvare i partecipanti della consultazione.",
+      };
+    }
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: "consultation_participants_updated",
+    target_table: "consultation_participants",
+    target_id: consultationId,
+    metadata: {
+      assigned_count: String(validSelectedProfileIds.size),
+      inserted_count: String(participantIdsToInsert.length),
+      removed_count: String(participantIdsToDelete.length),
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/consultations");
+  revalidatePath(getConsultationDetailPath(consultationId));
+
+  return {
+    status: "success",
+    message:
+      validSelectedProfileIds.size > 0
+        ? "Esperti assegnati alla consultazione."
+        : "Nessun esperto assegnato alla consultazione.",
   };
 }
 
