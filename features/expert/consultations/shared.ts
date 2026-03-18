@@ -1,10 +1,29 @@
 import {
   formatConsultationStateLabel,
+  type DocumentSectionEntry,
   type ConsultationDirectoryEntry,
   type ConsultationState,
 } from "@/features/admin/consultations/shared";
 
 export type ExpertAssignedConsultationEntry = ConsultationDirectoryEntry;
+export type ExpertConsultationSectionEntry = DocumentSectionEntry;
+
+export const expertCommentPriorityLevels = ["low", "medium", "high"] as const;
+
+export type ExpertSectionCommentPriority = (typeof expertCommentPriorityLevels)[number];
+
+export type ExpertSectionCommentEntry = {
+  id: string;
+  consultation_id: string;
+  section_id: string;
+  expert_profile_id: string;
+  title: string;
+  body_text: string | null;
+  priority: ExpertSectionCommentPriority;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
 
 export type ExpertConsultationView =
   | "locked"
@@ -31,6 +50,25 @@ export function getExpertConsultationView(state: ConsultationState): ExpertConsu
       return "completed";
     default:
       return "locked";
+  }
+}
+
+export function canExpertSubmitSectionComments(state: ConsultationState) {
+  return state === "phase_1_open";
+}
+
+export function formatExpertCommentPriorityLabel(
+  priority: ExpertSectionCommentPriority,
+) {
+  switch (priority) {
+    case "low":
+      return "Bassa";
+    case "medium":
+      return "Media";
+    case "high":
+      return "Alta";
+    default:
+      return priority;
   }
 }
 
@@ -61,8 +99,8 @@ export function getExpertConsultationPageContent(
             : "Consultazione in fase commenti",
         body:
           consultation.current_state === "phase_1_open"
-            ? "Qui costruiremo la pagina in cui l'esperto inserira' i commenti sulle sezioni del documento."
-            : "La consultazione non e' piu' in inserimento commenti, ma questa route restera' il punto di accesso alla vista fase 1 e ai contenuti inviati.",
+            ? "Leggi le sezioni del documento, naviga il contenuto HTML completo e inserisci commenti strutturati per ciascuna sezione."
+            : "La fase di inserimento e' chiusa, ma puoi continuare a consultare le sezioni e rileggere i commenti gia' inviati.",
         stateLabel,
       };
     case "phase_2":

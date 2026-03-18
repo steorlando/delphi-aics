@@ -1,5 +1,10 @@
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { ExpertAssignedConsultationEntry } from "@/features/expert/consultations/shared";
+import type {
+  ExpertAssignedConsultationEntry,
+  ExpertConsultationSectionEntry,
+  ExpertSectionCommentEntry,
+} from "@/features/expert/consultations/shared";
 
 type AppError = {
   message: string;
@@ -110,4 +115,76 @@ export async function getExpertAssignedConsultationById(
   }
 
   return data;
+}
+
+export async function getExpertConsultationSections(consultationId: string) {
+  const supabase = createAdminSupabaseClient();
+  const sectionsQuery = supabase
+    .from("document_sections")
+    .select(
+      [
+        "id",
+        "consultation_id",
+        "title",
+        "slug",
+        "order_index",
+        "body_text",
+        "reference_label",
+        "is_active",
+        "created_at",
+        "updated_at",
+      ].join(", "),
+    )
+    .eq("consultation_id", consultationId)
+    .eq("is_active", true)
+    .order("order_index", { ascending: true })
+    .returns<ExpertConsultationSectionEntry[]>() as unknown as Promise<{
+    data: ExpertConsultationSectionEntry[] | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await sectionsQuery;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function getExpertSectionComments(
+  profileId: string,
+  consultationId: string,
+) {
+  const supabase = createAdminSupabaseClient();
+  const commentsQuery = supabase
+    .from("expert_section_comments")
+    .select(
+      [
+        "id",
+        "consultation_id",
+        "section_id",
+        "expert_profile_id",
+        "title",
+        "body_text",
+        "priority",
+        "is_active",
+        "created_at",
+        "updated_at",
+      ].join(", "),
+    )
+    .eq("consultation_id", consultationId)
+    .eq("expert_profile_id", profileId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .returns<ExpertSectionCommentEntry[]>() as unknown as Promise<{
+    data: ExpertSectionCommentEntry[] | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await commentsQuery;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
 }

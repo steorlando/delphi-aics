@@ -1641,6 +1641,423 @@ input {
   white-space: nowrap;
 }
 
+.expert-review-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr) minmax(20rem, 24rem);
+  align-items: start;
+}
+
+.expert-review-nav-panel {
+  position: sticky;
+  top: 1.75rem;
+}
+
+.expert-review-layout-nav-collapsed {
+  grid-template-columns: minmax(7.25rem, 8rem) minmax(0, 1fr) minmax(20rem, 24rem);
+}
+
+.expert-review-nav-panel,
+.expert-review-comments-panel,
+.expert-review-document-panel {
+  min-width: 0;
+}
+
+.expert-review-nav-panel-collapsed {
+  padding: 0.85rem;
+}
+
+.expert-review-nav-panel-collapsed .expert-review-nav-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.expert-review-nav-panel-collapsed .expert-review-nav-toggle {
+  width: 100%;
+}
+
+.expert-review-nav-panel-collapsed .expert-review-section-list {
+  gap: 0.5rem;
+  padding-right: 0;
+}
+
+.expert-review-section-list,
+.expert-review-comment-list,
+.expert-review-comments-list,
+.expert-review-composer {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.expert-review-side-column,
+.expert-review-comments-panel,
+.expert-review-comments-history {
+  min-width: 0;
+}
+
+.expert-review-side-column {
+  display: grid;
+  gap: 0.85rem;
+  align-self: stretch;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.expert-review-comments-panel {
+  gap: 0.85rem;
+}
+
+.expert-review-comments-history {
+  position: relative;
+  z-index: 1;
+}
+
+.expert-review-comments-composer-panel {
+  position: sticky;
+  top: 1.25rem;
+  bottom: auto;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(250, 252, 255, 0.985));
+  box-shadow:
+    0 22px 50px rgba(37, 52, 70, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  backdrop-filter: none;
+}
+
+.expert-review-nav-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.expert-review-nav-copy-collapsed .eyebrow {
+  margin: 0 auto;
+}
+
+.expert-review-nav-copy-collapsed {
+  justify-items: center;
+}
+
+.expert-review-nav-toggle {
+  min-width: 2.15rem;
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+  flex: 0 0 auto;
+}
+
+.expert-review-section-list {
+  max-height: calc(100vh - 12rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.expert-review-section-button {
+  width: 100%;
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.expert-review-section-button:hover,
+.expert-review-section-button:focus-visible,
+.expert-review-section-button-selected {
+  border-color: rgba(67, 98, 127, 0.28);
+  background: linear-gradient(180deg, rgba(67, 98, 127, 0.12), rgba(67, 98, 127, 0.05));
+}
+
+.expert-review-section-button-collapsed {
+  width: 100%;
+  min-width: 0;
+  justify-items: center;
+  min-height: 3.25rem;
+  padding: 0.35rem 0.25rem;
+}
+
+.expert-review-section-button-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.expert-review-section-button-collapsed .expert-review-section-button-main {
+  justify-content: center;
+  width: 100%;
+}
+
+.expert-review-section-button-collapsed .section-index-order {
+  min-width: 1.95rem;
+  min-height: 1.95rem;
+  font-size: 0.76rem;
+}
+
+.expert-review-section-button-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.expert-review-section-button-copy strong {
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.expert-review-section-button-copy span,
+.expert-review-comment-count {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.expert-review-comment-count {
+  padding-left: 3.05rem;
+}
+
+.expert-review-document-shell {
+  min-width: 0;
+  padding: clamp(1.2rem, 2vw, 1.8rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.expert-review-document-content {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.expert-review-document-content h1,
+.expert-review-document-content h2,
+.expert-review-document-content h3,
+.expert-review-document-content h4 {
+  margin: 0 0 0.9rem;
+}
+
+.expert-review-document-content p,
+.expert-review-document-content ul,
+.expert-review-document-content ol,
+.expert-review-document-content blockquote {
+  margin: 0 0 1rem;
+}
+
+.expert-review-document-content ul,
+.expert-review-document-content ol {
+  padding-left: 1.35rem;
+}
+
+.expert-review-document-content blockquote {
+  padding-left: 1rem;
+  border-left: 3px solid rgba(67, 98, 127, 0.18);
+  color: var(--text-muted);
+}
+
+.expert-review-note {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.expert-review-note-warning {
+  border-color: rgba(139, 97, 41, 0.2);
+  background: rgba(139, 97, 41, 0.08);
+}
+
+.expert-review-comment-list {
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.expert-review-comment-list-compact {
+  max-height: min(42rem, calc(100vh - 12rem));
+}
+
+.expert-review-comment-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.expert-review-comment-card-header {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.expert-review-comment-card-title {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.expert-review-comment-card-title span {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.expert-review-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(67, 98, 127, 0.08);
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.expert-review-comment-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.expert-review-comment-card-compact {
+  gap: 0.65rem;
+  padding: 0.8rem 0.9rem;
+}
+
+.expert-review-comment-card-expanded {
+  background: rgba(67, 98, 127, 0.06);
+}
+
+.expert-review-comment-card-editing {
+  border-color: rgba(67, 98, 127, 0.3);
+}
+
+.expert-review-comment-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.expert-review-comment-row-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.expert-review-comment-row-title {
+  color: var(--text);
+  font-size: 0.96rem;
+  overflow-wrap: anywhere;
+}
+
+.expert-review-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+.expert-review-comment-details {
+  display: grid;
+  gap: 0.45rem;
+  padding-top: 0.2rem;
+  border-top: 1px solid rgba(129, 145, 166, 0.16);
+}
+
+.expert-review-comment-date {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.expert-review-inline-feedback {
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.expert-review-inline-edit-form {
+  gap: 0.7rem;
+}
+
+.expert-review-inline-edit-form .field textarea {
+  min-height: 6.5rem;
+}
+
+.expert-review-priority-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.expert-review-priority-field {
+  min-width: 0;
+}
+
+.priority-segmented-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.priority-segmented-field legend {
+  margin-bottom: 0.42rem;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.priority-segmented-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.priority-segmented-option {
+  min-height: 2.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.priority-segmented-option:hover,
+.priority-segmented-option:focus-visible {
+  border-color: rgba(67, 98, 127, 0.28);
+  background: rgba(67, 98, 127, 0.08);
+}
+
+.priority-segmented-option-selected {
+  border-color: rgba(67, 98, 127, 0.28);
+  background: linear-gradient(180deg, rgba(67, 98, 127, 0.14), rgba(67, 98, 127, 0.06));
+  color: var(--accent-strong);
+}
+
+.expert-review-submit-button {
+  width: auto;
+  min-width: 2.35rem;
+  margin-left: auto;
+}
+
+.expert-review-form-actions {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1673,6 +2090,23 @@ input {
   .compact-create-panel {
     max-width: none;
   }
+
+  .expert-review-layout {
+    grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
+  }
+
+  .expert-review-layout-nav-collapsed {
+    grid-template-columns: minmax(7rem, 7.75rem) minmax(0, 1fr);
+  }
+
+  .expert-review-comments-composer-panel {
+    position: static;
+  }
+
+  .expert-review-side-column {
+    grid-column: 1 / -1;
+    align-self: start;
+  }
 }
 
 @media (max-width: 980px) {
@@ -1686,6 +2120,34 @@ input {
 
   .modal-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .expert-review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .expert-review-layout-nav-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .expert-review-nav-panel,
+  .expert-review-comments-composer-panel {
+    position: static;
+  }
+
+  .expert-review-section-list,
+  .expert-review-comment-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .expert-review-side-column {
+    align-self: start;
+  }
+
+  .expert-review-priority-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 }
 

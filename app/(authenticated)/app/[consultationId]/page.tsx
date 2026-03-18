@@ -3,8 +3,14 @@ import { notFound, redirect } from "next/navigation";
 import {
   formatConsultationStateLabel,
 } from "@/features/admin/consultations/shared";
-import { getExpertAssignedConsultationById } from "@/features/expert/consultations/queries";
+import { ExpertConsultationReview } from "@/features/expert/consultations/expert-consultation-review";
 import {
+  getExpertAssignedConsultationById,
+  getExpertConsultationSections,
+  getExpertSectionComments,
+} from "@/features/expert/consultations/queries";
+import {
+  canExpertSubmitSectionComments,
   getExpertConsultationPageContent,
   getExpertConsultationView,
 } from "@/features/expert/consultations/shared";
@@ -32,6 +38,14 @@ export default async function ExpertConsultationPage({
   }
 
   const pageContent = getExpertConsultationPageContent(consultation);
+  const consultationView = getExpertConsultationView(consultation.current_state);
+  const [sections, comments] =
+    consultationView === "phase_1"
+      ? await Promise.all([
+        getExpertConsultationSections(consultation.id),
+        getExpertSectionComments(profile.id, consultation.id),
+      ])
+      : [[], []];
 
   return (
     <div className="stack">
@@ -80,14 +94,23 @@ export default async function ExpertConsultationPage({
           </div>
         ) : null}
 
-        <div className="expert-consultation-placeholder">
-          <strong>Prossimo step implementativo</strong>
-          <p>
-            Questa route e&apos; gia&apos; distinta per fase e verra&apos; popolata con
-            l&apos;interfaccia reale di commento, voto o risultati finali nel prossimo
-            step.
-          </p>
-        </div>
+        {consultationView === "phase_1" ? (
+          <ExpertConsultationReview
+            canSubmitComments={canExpertSubmitSectionComments(consultation.current_state)}
+            comments={comments}
+            consultationId={consultation.id}
+            sections={sections}
+          />
+        ) : (
+          <div className="expert-consultation-placeholder">
+            <strong>Prossimo step implementativo</strong>
+            <p>
+              Questa route e&apos; gia&apos; distinta per fase e verra&apos; popolata con
+              l&apos;interfaccia reale di commento, voto o risultati finali nel prossimo
+              step.
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );
