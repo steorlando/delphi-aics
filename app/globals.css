@@ -1704,10 +1704,6 @@ input {
   grid-auto-rows: max-content;
 }
 
-.admin-consultation-comments-layout {
-  align-items: stretch;
-}
-
 .admin-consultation-comments-side-column {
   align-self: stretch;
 }
