@@ -2014,6 +2014,14 @@ input {
   padding-top: 0.15rem;
 }
 
+.admin-comment-notification-modal {
+  width: min(100%, 38rem);
+}
+
+.admin-comment-notification-textarea {
+  min-height: 9rem;
+}
+
 .expert-review-inline-feedback {
   padding-top: 0.65rem;
   padding-bottom: 0.65rem;

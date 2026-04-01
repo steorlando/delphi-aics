@@ -10,6 +10,8 @@ import {
   expertCommentPriorityLevels,
   type ExpertSectionCommentPriority,
 } from "@/features/expert/consultations/shared";
+import { sendCommentModerationNotification } from "@/lib/email/smtp";
+import { hasSmtpNotificationEnv } from "@/lib/env";
 import { getAuthContext } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -51,7 +53,29 @@ export type UpdateConsultationParticipantsFormState = {
   message: string;
 };
 
+export type AdminCommentNotificationActionType = "updated" | "deleted";
+
+type AdminCommentSnapshot = {
+  bodyText: string | null;
+  title: string;
+};
+
+export type AdminCommentNotificationContext = {
+  actionType: AdminCommentNotificationActionType;
+  commentId: string;
+  consultationId: string;
+  nextComment: AdminCommentSnapshot | null;
+  previousComment: AdminCommentSnapshot;
+  sectionId: string;
+};
+
 export type UpdateAdminConsultationCommentFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  notificationContext: AdminCommentNotificationContext | null;
+};
+
+export type SendAdminCommentNotificationFormState = {
   status: "idle" | "success" | "error";
   message: string;
 };
@@ -277,6 +301,24 @@ function normalizeCommentPriority(value: FormDataEntryValue | null) {
   return normalized;
 }
 
+function normalizeNotificationMessage(value: FormDataEntryValue | null) {
+  return normalizeText(value);
+}
+
+function normalizeCommentNotificationActionType(
+  value: FormDataEntryValue | null,
+) {
+  const normalized = normalizeText(
+    value,
+  ) as AdminCommentNotificationActionType;
+
+  if (normalized !== "updated" && normalized !== "deleted") {
+    return null;
+  }
+
+  return normalized;
+}
+
 function normalizeStringArray(values: FormDataEntryValue[]) {
   return Array.from(
     new Set(
@@ -333,6 +375,49 @@ async function logAdminAction(
 
   if (error) {
     console.error("Unable to write admin action log", error);
+  }
+}
+
+async function maybeSendCommentAuthorNotification(input: {
+  actionType: "updated" | "deleted";
+  commentTitle: string;
+  consultationTitle: string;
+  nextComment: {
+    bodyText: string | null;
+    title: string;
+  } | null;
+  previousComment: {
+    bodyText: string | null;
+    title: string;
+  };
+  recipientEmail: string;
+  recipientName: string;
+  sectionTitle: string;
+  shouldNotifyAuthor: boolean;
+  notificationMessage: string;
+}) {
+  if (!input.shouldNotifyAuthor) {
+    return null;
+  }
+
+  try {
+    await sendCommentModerationNotification({
+      actionType: input.actionType,
+      adminMessage: input.notificationMessage,
+      commentTitle: input.commentTitle,
+      consultationTitle: input.consultationTitle,
+      nextComment: input.nextComment,
+      previousComment: input.previousComment,
+      recipientEmail: input.recipientEmail,
+      recipientName: input.recipientName,
+      sectionTitle: input.sectionTitle,
+    });
+
+    return null;
+  } catch (error) {
+    return error instanceof Error
+      ? error.message
+      : "Invio della notifica email non riuscito.";
   }
 }
 
@@ -1043,6 +1128,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Solo gli amministratori autenticati possono modificare commenti.",
+      notificationContext: null,
     };
   }
 
@@ -1057,6 +1143,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Commento non valido.",
+      notificationContext: null,
     };
   }
 
@@ -1064,6 +1151,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Consultazione non valida.",
+      notificationContext: null,
     };
   }
 
@@ -1071,6 +1159,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Sezione non valida.",
+      notificationContext: null,
     };
   }
 
@@ -1078,6 +1167,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Il titolo del commento e' obbligatorio.",
+      notificationContext: null,
     };
   }
 
@@ -1085,6 +1175,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Seleziona una priorita' valida: low, medium o high.",
+      notificationContext: null,
     };
   }
 
@@ -1094,29 +1185,29 @@ export async function updateAdminConsultationCommentAction(
   ) as unknown as AdminActionLogsInsertBuilder;
   const consultationQuery = supabase
     .from("consultations")
-    .select("id")
+    .select("id, title")
     .eq("id", consultationId)
-    .maybeSingle<{ id: string }>() as unknown as Promise<{
-    data: { id: string } | null;
+    .maybeSingle<{ id: string; title: string }>() as unknown as Promise<{
+    data: { id: string; title: string } | null;
     error: AppError | null;
   }>;
   const sectionQuery = supabase
     .from("document_sections")
-    .select("id")
+    .select("id, title")
     .eq("id", sectionId)
     .eq("consultation_id", consultationId)
-    .maybeSingle<{ id: string }>() as unknown as Promise<{
-    data: { id: string } | null;
+    .maybeSingle<{ id: string; title: string }>() as unknown as Promise<{
+    data: { id: string; title: string } | null;
     error: AppError | null;
   }>;
   const commentQuery = supabase
     .from("expert_section_comments")
-    .select("id, expert_profile_id, is_active")
+    .select("id, expert_profile_id, title, body_text, is_active")
     .eq("id", commentId)
     .eq("consultation_id", consultationId)
     .eq("section_id", sectionId)
-    .maybeSingle<{ id: string; expert_profile_id: string; is_active: boolean }>() as unknown as Promise<{
-    data: { id: string; expert_profile_id: string; is_active: boolean } | null;
+    .maybeSingle<{ id: string; expert_profile_id: string; title: string; body_text: string | null; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; expert_profile_id: string; title: string; body_text: string | null; is_active: boolean } | null;
     error: AppError | null;
   }>;
 
@@ -1130,6 +1221,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: consultationError?.message || "Consultazione non disponibile.",
+      notificationContext: null,
     };
   }
 
@@ -1137,6 +1229,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: sectionError?.message || "La sezione selezionata non e' disponibile.",
+      notificationContext: null,
     };
   }
 
@@ -1144,6 +1237,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: commentError?.message || "Il commento selezionato non e' disponibile.",
+      notificationContext: null,
     };
   }
 
@@ -1171,6 +1265,7 @@ export async function updateAdminConsultationCommentAction(
     return {
       status: "error",
       message: error?.message || "Impossibile aggiornare il commento.",
+      notificationContext: null,
     };
   }
 
@@ -1196,6 +1291,20 @@ export async function updateAdminConsultationCommentAction(
   return {
     status: "success",
     message: "Commento aggiornato correttamente.",
+    notificationContext: {
+      actionType: "updated",
+      commentId,
+      consultationId,
+      nextComment: {
+        bodyText,
+        title,
+      },
+      previousComment: {
+        bodyText: comment.body_text,
+        title: comment.title,
+      },
+      sectionId,
+    },
   };
 }
 
@@ -1209,6 +1318,7 @@ export async function deleteAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Solo gli amministratori autenticati possono eliminare commenti.",
+      notificationContext: null,
     };
   }
 
@@ -1220,6 +1330,7 @@ export async function deleteAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Commento non valido.",
+      notificationContext: null,
     };
   }
 
@@ -1227,6 +1338,7 @@ export async function deleteAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Consultazione non valida.",
+      notificationContext: null,
     };
   }
 
@@ -1234,6 +1346,7 @@ export async function deleteAdminConsultationCommentAction(
     return {
       status: "error",
       message: "Sezione non valida.",
+      notificationContext: null,
     };
   }
 
@@ -1243,32 +1356,51 @@ export async function deleteAdminConsultationCommentAction(
   ) as unknown as AdminActionLogsInsertBuilder;
   const consultationQuery = supabase
     .from("consultations")
-    .select("id")
+    .select("id, title")
     .eq("id", consultationId)
-    .maybeSingle<{ id: string }>() as unknown as Promise<{
-    data: { id: string } | null;
+    .maybeSingle<{ id: string; title: string }>() as unknown as Promise<{
+    data: { id: string; title: string } | null;
+    error: AppError | null;
+  }>;
+  const sectionQuery = supabase
+    .from("document_sections")
+    .select("id, title")
+    .eq("id", sectionId)
+    .eq("consultation_id", consultationId)
+    .maybeSingle<{ id: string; title: string }>() as unknown as Promise<{
+    data: { id: string; title: string } | null;
     error: AppError | null;
   }>;
   const commentQuery = supabase
     .from("expert_section_comments")
-    .select("id, expert_profile_id, is_active")
+    .select("id, expert_profile_id, title, body_text, is_active")
     .eq("id", commentId)
     .eq("consultation_id", consultationId)
     .eq("section_id", sectionId)
-    .maybeSingle<{ id: string; expert_profile_id: string; is_active: boolean }>() as unknown as Promise<{
-    data: { id: string; expert_profile_id: string; is_active: boolean } | null;
+    .maybeSingle<{ id: string; expert_profile_id: string; title: string; body_text: string | null; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; expert_profile_id: string; title: string; body_text: string | null; is_active: boolean } | null;
     error: AppError | null;
   }>;
 
   const [
     { data: consultation, error: consultationError },
+    { data: section, error: sectionError },
     { data: comment, error: commentError },
-  ] = await Promise.all([consultationQuery, commentQuery]);
+  ] = await Promise.all([consultationQuery, sectionQuery, commentQuery]);
 
   if (consultationError || !consultation) {
     return {
       status: "error",
       message: consultationError?.message || "Consultazione non disponibile.",
+      notificationContext: null,
+    };
+  }
+
+  if (sectionError || !section) {
+    return {
+      status: "error",
+      message: sectionError?.message || "La sezione selezionata non e' disponibile.",
+      notificationContext: null,
     };
   }
 
@@ -1276,6 +1408,7 @@ export async function deleteAdminConsultationCommentAction(
     return {
       status: "error",
       message: commentError?.message || "Il commento selezionato non e' disponibile.",
+      notificationContext: null,
     };
   }
 
@@ -1301,6 +1434,7 @@ export async function deleteAdminConsultationCommentAction(
     return {
       status: "error",
       message: error?.message || "Impossibile eliminare il commento.",
+      notificationContext: null,
     };
   }
 
@@ -1316,14 +1450,216 @@ export async function deleteAdminConsultationCommentAction(
     },
   });
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/consultations");
-  revalidatePath(getConsultationDetailPath(consultationId));
-  revalidatePath("/app");
-  revalidatePath(getExpertConsultationPath(consultationId));
-
   return {
     status: "success",
     message: "Commento eliminato correttamente.",
+    notificationContext: {
+      actionType: "deleted",
+      commentId,
+      consultationId,
+      nextComment: null,
+      previousComment: {
+        bodyText: comment.body_text,
+        title: comment.title,
+      },
+      sectionId,
+    },
+  };
+}
+
+export async function notifyAdminCommentAuthorAction(
+  _previousState: SendAdminCommentNotificationFormState,
+  formData: FormData,
+): Promise<SendAdminCommentNotificationFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono inviare notifiche.",
+    };
+  }
+
+  const actionType = normalizeCommentNotificationActionType(
+    formData.get("actionType"),
+  );
+  const commentId = normalizeText(formData.get("commentId"));
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const nextBodyText = normalizeOptionalText(formData.get("nextBodyText"));
+  const nextTitle = normalizeText(formData.get("nextTitle"));
+  const previousBodyText = normalizeOptionalText(formData.get("previousBodyText"));
+  const previousTitle = normalizeText(formData.get("previousTitle"));
+  const sectionId = normalizeText(formData.get("sectionId"));
+  const notificationMessage = normalizeNotificationMessage(
+    formData.get("notificationMessage"),
+  );
+
+  if (!actionType) {
+    return {
+      status: "error",
+      message: "Azione di notifica non valida.",
+    };
+  }
+
+  if (!commentId || !consultationId || !sectionId) {
+    return {
+      status: "error",
+      message: "Dati del commento non validi per inviare la notifica.",
+    };
+  }
+
+  if (!previousTitle) {
+    return {
+      status: "error",
+      message: "Versione originale del commento non disponibile.",
+    };
+  }
+
+  if (actionType === "updated" && !nextTitle) {
+    return {
+      status: "error",
+      message: "Versione aggiornata del commento non disponibile.",
+    };
+  }
+
+  if (!notificationMessage) {
+    return {
+      status: "error",
+      message: "Scrivi un messaggio prima di inviare la notifica all'autore.",
+    };
+  }
+
+  if (!hasSmtpNotificationEnv()) {
+    return {
+      status: "error",
+      message:
+        "Le variabili SMTP non sono configurate. Aggiungi SMTP_PASS e, se necessario, SMTP_USER per inviare notifiche email.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id, title")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string; title: string }>() as unknown as Promise<{
+    data: { id: string; title: string } | null;
+    error: AppError | null;
+  }>;
+  const sectionQuery = supabase
+    .from("document_sections")
+    .select("id, title")
+    .eq("id", sectionId)
+    .eq("consultation_id", consultationId)
+    .maybeSingle<{ id: string; title: string }>() as unknown as Promise<{
+    data: { id: string; title: string } | null;
+    error: AppError | null;
+  }>;
+  const commentQuery = supabase
+    .from("expert_section_comments")
+    .select("id, expert_profile_id, title")
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .eq("section_id", sectionId)
+    .maybeSingle<{ id: string; expert_profile_id: string; title: string }>() as unknown as Promise<{
+    data: { id: string; expert_profile_id: string; title: string } | null;
+    error: AppError | null;
+  }>;
+
+  const [
+    { data: consultation, error: consultationError },
+    { data: section, error: sectionError },
+    { data: comment, error: commentError },
+  ] = await Promise.all([consultationQuery, sectionQuery, commentQuery]);
+
+  if (consultationError || !consultation) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (sectionError || !section) {
+    return {
+      status: "error",
+      message: sectionError?.message || "La sezione selezionata non e' disponibile.",
+    };
+  }
+
+  if (commentError || !comment) {
+    return {
+      status: "error",
+      message: commentError?.message || "Il commento selezionato non e' disponibile.",
+    };
+  }
+
+  const authorLookupQuery = supabase
+    .from("profiles")
+    .select("email, first_name, last_name")
+    .eq("id", comment.expert_profile_id)
+    .maybeSingle<{ email: string; first_name: string; last_name: string }>() as unknown as Promise<{
+    data: { email: string; first_name: string; last_name: string } | null;
+    error: AppError | null;
+  }>;
+  const { data: author, error: authorError } = await authorLookupQuery;
+
+  if (authorError || !author) {
+    return {
+      status: "error",
+      message: authorError?.message || "Impossibile recuperare l'autore del commento.",
+    };
+  }
+
+  const notificationError = await maybeSendCommentAuthorNotification({
+    actionType,
+    commentTitle: comment.title,
+    consultationTitle: consultation.title,
+    nextComment:
+      actionType === "updated"
+        ? {
+          bodyText: nextBodyText,
+          title: nextTitle,
+        }
+        : null,
+    previousComment: {
+      bodyText: previousBodyText,
+      title: previousTitle,
+    },
+    recipientEmail: author.email,
+    recipientName: `${author.first_name} ${author.last_name}`.trim() || author.email,
+    sectionTitle: section.title,
+    shouldNotifyAuthor: true,
+    notificationMessage,
+  });
+
+  if (notificationError) {
+    return {
+      status: "error",
+      message: `Invio della notifica email non riuscito: ${notificationError}`,
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: "expert_section_comment_author_notified",
+    target_table: "expert_section_comments",
+    target_id: commentId,
+    metadata: {
+      action_type: actionType,
+      expert_profile_id: comment.expert_profile_id,
+      section_id: sectionId,
+    },
+  });
+
+  return {
+    status: "success",
+    message:
+      actionType === "deleted"
+        ? "Notifica inviata all'autore del commento eliminato."
+        : "Notifica inviata all'autore del commento modificato.",
   };
 }

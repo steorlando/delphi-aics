@@ -1,10 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteAdminConsultationCommentAction,
+  notifyAdminCommentAuthorAction,
   updateAdminConsultationCommentAction,
+  type AdminCommentNotificationContext,
+  type SendAdminCommentNotificationFormState,
   type UpdateAdminConsultationCommentFormState,
 } from "@/features/admin/consultations/actions";
 import { CollapsiblePanel } from "@/features/admin/consultations/collapsible-panel";
@@ -26,6 +29,12 @@ type AdminConsultationCommentsManagerProps = {
 };
 
 const initialState: UpdateAdminConsultationCommentFormState = {
+  status: "idle",
+  message: "",
+  notificationContext: null,
+};
+
+const initialNotificationState: SendAdminCommentNotificationFormState = {
   status: "idle",
   message: "",
 };
@@ -188,16 +197,19 @@ function TrashIcon() {
 function EditAdminCommentInlineForm({
   comment,
   consultationId,
+  onActionCommitted,
   onCancel,
 }: {
   comment: AdminConsultationCommentEntry;
   consultationId: string;
+  onActionCommitted: (context: AdminCommentNotificationContext) => void;
   onCancel: () => void;
 }) {
-  const router = useRouter();
   const [title, setTitle] = useState(comment.title);
   const [bodyText, setBodyText] = useState(comment.body_text ?? "");
   const [priority, setPriority] = useState<ExpertSectionCommentPriority>(comment.priority);
+  const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
+  const deleteSubmitRef = useRef<HTMLButtonElement>(null);
   const [state, formAction, isPending] = useActionState(
     updateAdminConsultationCommentAction,
     initialState,
@@ -208,18 +220,16 @@ function EditAdminCommentInlineForm({
   );
 
   useEffect(() => {
-    if (state.status === "success") {
-      onCancel();
-      router.refresh();
+    if (state.status === "success" && state.notificationContext) {
+      onActionCommitted(state.notificationContext);
     }
-  }, [onCancel, router, state.status]);
+  }, [onActionCommitted, state.notificationContext, state.status]);
 
   useEffect(() => {
-    if (deleteState.status === "success") {
-      onCancel();
-      router.refresh();
+    if (deleteState.status === "success" && deleteState.notificationContext) {
+      onActionCommitted(deleteState.notificationContext);
     }
-  }, [deleteState.status, onCancel, router]);
+  }, [deleteState.notificationContext, deleteState.status, onActionCommitted]);
 
   return (
     <form action={formAction} className="auth-form expert-review-inline-edit-form">
@@ -232,16 +242,8 @@ function EditAdminCommentInlineForm({
         <p className="form-error expert-review-inline-feedback">{state.message}</p>
       ) : null}
 
-      {state.status === "success" && state.message ? (
-        <p className="form-success expert-review-inline-feedback">{state.message}</p>
-      ) : null}
-
       {deleteState.status === "error" && deleteState.message ? (
         <p className="form-error expert-review-inline-feedback">{deleteState.message}</p>
-      ) : null}
-
-      {deleteState.status === "success" && deleteState.message ? (
-        <p className="form-success expert-review-inline-feedback">{deleteState.message}</p>
       ) : null}
 
       <label className="field">
@@ -303,8 +305,8 @@ function EditAdminCommentInlineForm({
           aria-label={isDeleting ? "Eliminazione commento in corso" : "Elimina commento"}
           className="secondary-button small-button icon-action-button destructive-button"
           disabled={isPending || isDeleting}
-          formAction={deleteAction}
-          type="submit"
+          onClick={() => setIsDeleteConfirmationOpen(true)}
+          type="button"
         >
           <TrashIcon />
           <span className="sr-only">Elimina commento</span>
@@ -319,8 +321,264 @@ function EditAdminCommentInlineForm({
           <PaperPlaneIcon />
           <span className="sr-only">Aggiorna commento</span>
         </button>
+
+        <button
+          className="sr-only"
+          disabled={isPending || isDeleting}
+          formAction={deleteAction}
+          ref={deleteSubmitRef}
+          type="submit"
+        >
+          Conferma eliminazione commento
+        </button>
       </div>
+
+      {isDeleteConfirmationOpen ? (
+        <div
+          aria-modal="true"
+          className="modal-backdrop modal-backdrop-top"
+          onClick={() => setIsDeleteConfirmationOpen(false)}
+          role="dialog"
+        >
+          <div
+            className="modal-card admin-comment-notification-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-card-header">
+              <div>
+                <span className="eyebrow">Conferma eliminazione</span>
+                <h3>Vuoi davvero eliminare questo commento?</h3>
+              </div>
+              <button
+                aria-label="Chiudi conferma eliminazione"
+                className="secondary-button small-button"
+                disabled={isPending || isDeleting}
+                onClick={() => setIsDeleteConfirmationOpen(false)}
+                type="button"
+              >
+                Chiudi
+              </button>
+            </div>
+
+            <p className="muted">
+              Il commento non verra&apos; rimosso dal database, ma sara&apos;
+              segnato come inattivo e non sara&apos; piu&apos; visibile
+              all&apos;esperto nelle fasi successive.
+            </p>
+
+            <div className="compact-form-actions modal-form-actions">
+              <button
+                className="secondary-button"
+                disabled={isPending || isDeleting}
+                onClick={() => setIsDeleteConfirmationOpen(false)}
+                type="button"
+              >
+                Annulla
+              </button>
+              <button
+                className="primary-button destructive-button"
+                disabled={isPending || isDeleting}
+                onClick={() => {
+                  setIsDeleteConfirmationOpen(false);
+                  deleteSubmitRef.current?.click();
+                }}
+                type="button"
+              >
+                Conferma eliminazione
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
+  );
+}
+
+function AdminCommentNotificationModal({
+  context,
+  onClose,
+}: {
+  context: AdminCommentNotificationContext;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<"choice" | "message">("choice");
+  const [message, setMessage] = useState("");
+  const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
+  const [state, formAction, isPending] = useActionState(
+    notifyAdminCommentAuthorAction,
+    initialNotificationState,
+  );
+
+  const actionVerb =
+    context.actionType === "deleted" ? "eliminato" : "modificato";
+
+  return (
+    <div
+      aria-modal="true"
+      className="modal-backdrop modal-backdrop-top"
+      onClick={onClose}
+      role="dialog"
+    >
+      <div
+        className="modal-card admin-comment-notification-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="modal-card-header">
+          <div>
+            <span className="eyebrow">Notifica autore</span>
+            <h3>
+              {state.status === "success"
+                ? "Notifica inviata"
+                : `Il commento e' gia' stato ${actionVerb}. Vuoi notificare l'autore?`}
+            </h3>
+          </div>
+          <button
+            aria-label="Chiudi notifica autore"
+            className="secondary-button small-button"
+            disabled={isPending}
+            onClick={onClose}
+            type="button"
+          >
+            Chiudi
+          </button>
+        </div>
+
+        {state.status === "success" ? (
+          <>
+            <p className="form-success">{state.message}</p>
+            <div className="compact-form-actions modal-form-actions">
+              <button
+                className="primary-button"
+                onClick={onClose}
+                type="button"
+              >
+                Chiudi
+              </button>
+            </div>
+          </>
+        ) : step === "choice" ? (
+          <>
+            <p className="muted">
+              La modifica e&apos; gia&apos; stata registrata nel database. Da qui
+              puoi solo scegliere se inviare o meno una spiegazione
+              all&apos;autore del commento.
+            </p>
+
+            <div className="compact-form-actions modal-form-actions">
+              <button
+                className="secondary-button"
+                disabled={isPending}
+                onClick={onClose}
+                type="button"
+              >
+                No, chiudi
+              </button>
+              <button
+                className="primary-button"
+                disabled={isPending}
+                onClick={() => {
+                  setStep("message");
+                  setLocalErrorMessage(null);
+                }}
+                type="button"
+              >
+                Si&apos;, scrivi messaggio
+              </button>
+            </div>
+          </>
+        ) : (
+          <form action={formAction} className="auth-form">
+            <input name="actionType" type="hidden" value={context.actionType} />
+            <input name="commentId" type="hidden" value={context.commentId} />
+            <input
+              name="consultationId"
+              type="hidden"
+              value={context.consultationId}
+            />
+            <input
+              name="previousTitle"
+              type="hidden"
+              value={context.previousComment.title}
+            />
+            <input
+              name="previousBodyText"
+              type="hidden"
+              value={context.previousComment.bodyText ?? ""}
+            />
+            <input
+              name="nextTitle"
+              type="hidden"
+              value={context.nextComment?.title ?? ""}
+            />
+            <input
+              name="nextBodyText"
+              type="hidden"
+              value={context.nextComment?.bodyText ?? ""}
+            />
+            <input name="sectionId" type="hidden" value={context.sectionId} />
+
+            {state.status === "error" && state.message ? (
+              <p className="form-error">{state.message}</p>
+            ) : null}
+
+            {localErrorMessage ? (
+              <p className="form-error">{localErrorMessage}</p>
+            ) : null}
+
+            <label className="field">
+              <span>Messaggio da inviare all&apos;autore</span>
+              <textarea
+                className="admin-comment-notification-textarea"
+                disabled={isPending}
+                name="notificationMessage"
+                onChange={(event) => {
+                  setMessage(event.target.value);
+                  if (localErrorMessage) {
+                    setLocalErrorMessage(null);
+                  }
+                }}
+                placeholder={
+                  context.actionType === "deleted"
+                    ? "Spiega perche' il commento e' stato eliminato, ad esempio perche' accorpato ad altri commenti simili."
+                    : "Spiega perche' il commento e' stato modificato o come e' stato riformulato."
+                }
+                required
+                value={message}
+              />
+            </label>
+
+            <div className="compact-form-actions modal-form-actions">
+              <button
+                className="secondary-button"
+                disabled={isPending}
+                onClick={() => {
+                  setStep("choice");
+                  setLocalErrorMessage(null);
+                }}
+                type="button"
+              >
+                Indietro
+              </button>
+              <button
+                className="primary-button"
+                disabled={isPending}
+                onClick={(event) => {
+                  if (!message.trim()) {
+                    event.preventDefault();
+                    setLocalErrorMessage(
+                      "Scrivi un messaggio prima di inviare la notifica all'autore.",
+                    );
+                  }
+                }}
+                type="submit"
+              >
+                Invia notifica
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -330,9 +588,12 @@ export function AdminConsultationCommentsManager({
   experts,
   sections,
 }: AdminConsultationCommentsManagerProps) {
+  const router = useRouter();
   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+  const [pendingNotificationContext, setPendingNotificationContext] =
+    useState<AdminCommentNotificationContext | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState(() =>
     getInitialSelectedSectionId(sections, comments),
   );
@@ -386,6 +647,19 @@ export function AdminConsultationCommentsManager({
   function handleCommentEdit(commentId: string) {
     setEditingCommentId(commentId);
     setExpandedCommentId(commentId);
+  }
+
+  function handleCommentActionCommitted(
+    notificationContext: AdminCommentNotificationContext,
+  ) {
+    setEditingCommentId(null);
+    setExpandedCommentId(null);
+    setPendingNotificationContext(notificationContext);
+  }
+
+  function closeNotificationModal() {
+    setPendingNotificationContext(null);
+    router.refresh();
   }
 
   return (
@@ -580,6 +854,7 @@ export function AdminConsultationCommentsManager({
                               <EditAdminCommentInlineForm
                                 comment={comment}
                                 consultationId={consultationId}
+                                onActionCommitted={handleCommentActionCommitted}
                                 onCancel={() => setEditingCommentId(null)}
                               />
                             ) : (
@@ -614,6 +889,13 @@ export function AdminConsultationCommentsManager({
           </div>
         </section>
       )}
+
+      {pendingNotificationContext ? (
+        <AdminCommentNotificationModal
+          context={pendingNotificationContext}
+          onClose={closeNotificationModal}
+        />
+      ) : null}
     </CollapsiblePanel>
   );
 }
