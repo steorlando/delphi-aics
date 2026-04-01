@@ -2,7 +2,7 @@ import { AicsLogo } from "@/components/aics-logo";
 import { ConfigurationNotice } from "@/components/configuration-notice";
 import { SignOutButton } from "@/components/sign-out-button";
 import { redirectAuthenticatedUserFromPublicRoute } from "@/lib/auth/guards";
-import { getAuthContext } from "@/lib/auth/session";
+import { getAuthContext, hasServerAuthSessionCookie } from "@/lib/auth/session";
 import { hasPublicSupabaseEnv } from "@/lib/env";
 import { LoginForm } from "./login-form";
 
@@ -34,9 +34,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     );
   }
 
-  await redirectAuthenticatedUserFromPublicRoute();
+  const hasAuthCookie = await hasServerAuthSessionCookie();
+  const { user, profile } = hasAuthCookie
+    ? await getAuthContext()
+    : { user: null, profile: null };
 
-  const { user, profile } = await getAuthContext();
+  if (hasAuthCookie) {
+    await redirectAuthenticatedUserFromPublicRoute();
+  }
+
   const { error } = await searchParams;
   const errorMessage = getErrorMessage(error);
 

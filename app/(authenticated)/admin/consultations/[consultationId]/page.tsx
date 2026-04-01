@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { AdminConsultationCommentsManager } from "@/features/admin/consultations/admin-consultation-comments-manager";
 import { ConsultationDetailPanel } from "@/features/admin/consultations/consultation-detail-panel";
 import { ConsultationParticipantsManager } from "@/features/admin/consultations/consultation-participants-manager";
 import { CreateDocumentSectionForm } from "@/features/admin/consultations/create-document-section-form";
@@ -10,6 +11,7 @@ import { getFigureLibraryState } from "@/features/admin/figures/queries";
 import { getExpertsDirectory } from "@/features/admin/experts/queries";
 import {
   getConsultationById,
+  getExpertSectionCommentsByConsultationId,
   getConsultationParticipantsByConsultationId,
   getDocumentSectionsByConsultationId,
 } from "@/features/admin/consultations/queries";
@@ -24,12 +26,13 @@ export default async function AdminConsultationDetailPage({
   params,
 }: AdminConsultationDetailPageProps) {
   const { consultationId } = await params;
-  const [consultation, sections, figureLibraryState, experts, participants] = await Promise.all([
+  const [consultation, sections, figureLibraryState, experts, participants, comments] = await Promise.all([
     getConsultationById(consultationId),
     getDocumentSectionsByConsultationId(consultationId),
     getFigureLibraryState(),
     getExpertsDirectory(),
     getConsultationParticipantsByConsultationId(consultationId),
+    getExpertSectionCommentsByConsultationId(consultationId),
   ]);
 
   if (!consultation) {
@@ -49,6 +52,13 @@ export default async function AdminConsultationDetailPage({
         consultationId={consultation.id}
         experts={experts}
         participants={participants}
+      />
+
+      <AdminConsultationCommentsManager
+        comments={comments}
+        consultationId={consultation.id}
+        experts={experts}
+        sections={sections}
       />
 
       <CreateDocumentSectionForm

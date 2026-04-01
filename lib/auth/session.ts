@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { cookies } from "next/headers";
 import type { AppProfile } from "@/lib/auth/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -21,6 +22,16 @@ function isMissingSessionError(error: unknown) {
     "name" in error &&
     error.name === "AuthSessionMissingError"
   );
+}
+
+function isSupabaseAuthCookie(name: string) {
+  return /^(?:__Secure-|__Host-)?sb-.*-auth-token(?:\.\d+)?$/.test(name);
+}
+
+export async function hasServerAuthSessionCookie() {
+  const cookieStore = await cookies();
+
+  return cookieStore.getAll().some((cookie) => isSupabaseAuthCookie(cookie.name));
 }
 
 export const getAuthContext = cache(async () => {

@@ -1704,6 +1704,14 @@ input {
   grid-auto-rows: max-content;
 }
 
+.admin-consultation-comments-layout {
+  align-items: stretch;
+}
+
+.admin-consultation-comments-side-column {
+  align-self: stretch;
+}
+
 .expert-review-comments-panel {
   gap: 0.85rem;
 }
@@ -1711,6 +1719,12 @@ input {
 .expert-review-comments-history {
   position: relative;
   z-index: 1;
+}
+
+.admin-consultation-comments-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .expert-review-comments-composer-panel {
@@ -1881,6 +1895,12 @@ input {
   max-height: min(42rem, calc(100vh - 12rem));
 }
 
+.admin-consultation-comment-list {
+  max-height: none;
+  overflow: visible;
+  flex: 1 1 auto;
+}
+
 .expert-review-comment-card {
   display: grid;
   gap: 0.75rem;
@@ -1932,7 +1952,9 @@ input {
 }
 
 .expert-review-comment-card-expanded {
-  background: rgba(67, 98, 127, 0.06);
+  border-color: rgba(67, 98, 127, 0.24);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px rgba(67, 98, 127, 0.08);
 }
 
 .expert-review-comment-card-editing {
@@ -1952,6 +1974,13 @@ input {
   align-items: center;
   gap: 0.55rem;
   flex-wrap: wrap;
+}
+
+.admin-consultation-comment-row-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+  flex: 1 1 auto;
 }
 
 .expert-review-comment-row-title {
@@ -1977,6 +2006,16 @@ input {
 .expert-review-comment-date {
   color: var(--text-soft);
   font-size: 0.82rem;
+}
+
+.admin-consultation-comment-author {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-consultation-comments-empty {
+  padding-top: 0.15rem;
 }
 
 .expert-review-inline-feedback {

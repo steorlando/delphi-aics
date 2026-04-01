@@ -1,5 +1,7 @@
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
+  AdminConsultationCommentEntry,
   ConsultationDirectoryEntry,
   ConsultationParticipantEntry,
   DocumentSectionEntry,
@@ -132,6 +134,42 @@ export async function getConsultationParticipantsByConsultationId(
     .order("created_at", { ascending: true })
     .returns<ConsultationParticipantEntry[]>() as unknown as Promise<{
     data: ConsultationParticipantEntry[] | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function getExpertSectionCommentsByConsultationId(
+  consultationId: string,
+) {
+  const supabase = createAdminSupabaseClient();
+  const query = supabase
+    .from("expert_section_comments")
+    .select(
+      [
+        "id",
+        "consultation_id",
+        "section_id",
+        "expert_profile_id",
+        "title",
+        "body_text",
+        "priority",
+        "is_active",
+        "created_at",
+        "updated_at",
+      ].join(", "),
+    )
+    .eq("consultation_id", consultationId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .returns<AdminConsultationCommentEntry[]>() as unknown as Promise<{
+    data: AdminConsultationCommentEntry[] | null;
     error: AppError | null;
   }>;
   const { data, error } = await query;

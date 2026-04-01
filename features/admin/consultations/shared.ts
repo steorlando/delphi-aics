@@ -1,3 +1,5 @@
+import type { ExpertSectionCommentPriority } from "@/features/expert/consultations/shared";
+
 export const consultationStates = [
   "draft",
   "phase_1_open",
@@ -80,6 +82,19 @@ export type ConsultationParticipantEntry = {
   id: string;
   consultation_id: string;
   profile_id: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminConsultationCommentEntry = {
+  id: string;
+  consultation_id: string;
+  section_id: string;
+  expert_profile_id: string;
+  title: string;
+  body_text: string | null;
+  priority: ExpertSectionCommentPriority;
   is_active: boolean;
   created_at: string;
   updated_at: string;

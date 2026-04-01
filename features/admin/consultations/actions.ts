@@ -6,7 +6,12 @@ import {
   slugifySectionTitle,
   type ConsultationState,
 } from "@/features/admin/consultations/shared";
+import {
+  expertCommentPriorityLevels,
+  type ExpertSectionCommentPriority,
+} from "@/features/expert/consultations/shared";
 import { getAuthContext } from "@/lib/auth/session";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type CreateConsultationFormState = {
@@ -42,6 +47,11 @@ export type DeleteDocumentSectionFormState = {
 };
 
 export type UpdateConsultationParticipantsFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
+export type UpdateAdminConsultationCommentFormState = {
   status: "idle" | "success" | "error";
   message: string;
 };
@@ -156,6 +166,48 @@ type DocumentSectionsUpdateBuilder = {
   };
 };
 
+type ExpertSectionCommentsUpdateBuilder = {
+  update(values: {
+    title: string;
+    body_text: string | null;
+    priority: ExpertSectionCommentPriority;
+    updated_at: string;
+  }): {
+    eq(column: string, value: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): {
+          select(columns: string): {
+            maybeSingle<T>(): Promise<{
+              data: T | null;
+              error: AppError | null;
+            }>;
+          };
+        };
+      };
+    };
+  };
+};
+
+type ExpertSectionCommentsSoftDeleteBuilder = {
+  update(values: {
+    is_active: boolean;
+    updated_at: string;
+  }): {
+    eq(column: string, value: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): {
+          select(columns: string): {
+            maybeSingle<T>(): Promise<{
+              data: T | null;
+              error: AppError | null;
+            }>;
+          };
+        };
+      };
+    };
+  };
+};
+
 type ConsultationParticipantsInsertBuilder = {
   insert(
     values:
@@ -215,6 +267,16 @@ function normalizeConsultationState(value: FormDataEntryValue | null) {
   return normalized;
 }
 
+function normalizeCommentPriority(value: FormDataEntryValue | null) {
+  const normalized = normalizeText(value) as ExpertSectionCommentPriority;
+
+  if (!expertCommentPriorityLevels.includes(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
 function normalizeStringArray(values: FormDataEntryValue[]) {
   return Array.from(
     new Set(
@@ -227,6 +289,10 @@ function normalizeStringArray(values: FormDataEntryValue[]) {
 
 function getConsultationDetailPath(consultationId: string) {
   return `/admin/consultations/${consultationId}`;
+}
+
+function getExpertConsultationPath(consultationId: string) {
+  return `/app/${consultationId}`;
 }
 
 function getConstraintErrorMessage(error: AppError | null) {
@@ -964,5 +1030,300 @@ export async function deleteDocumentSectionAction(
   return {
     status: "success",
     message: "Sezione eliminata.",
+  };
+}
+
+export async function updateAdminConsultationCommentAction(
+  _previousState: UpdateAdminConsultationCommentFormState,
+  formData: FormData,
+): Promise<UpdateAdminConsultationCommentFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono modificare commenti.",
+    };
+  }
+
+  const commentId = normalizeText(formData.get("commentId"));
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const sectionId = normalizeText(formData.get("sectionId"));
+  const title = normalizeText(formData.get("title"));
+  const bodyText = normalizeOptionalText(formData.get("bodyText"));
+  const priority = normalizeCommentPriority(formData.get("priority"));
+
+  if (!commentId) {
+    return {
+      status: "error",
+      message: "Commento non valido.",
+    };
+  }
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  if (!sectionId) {
+    return {
+      status: "error",
+      message: "Sezione non valida.",
+    };
+  }
+
+  if (!title) {
+    return {
+      status: "error",
+      message: "Il titolo del commento e' obbligatorio.",
+    };
+  }
+
+  if (!priority) {
+    return {
+      status: "error",
+      message: "Seleziona una priorita' valida: low, medium o high.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const sectionQuery = supabase
+    .from("document_sections")
+    .select("id")
+    .eq("id", sectionId)
+    .eq("consultation_id", consultationId)
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const commentQuery = supabase
+    .from("expert_section_comments")
+    .select("id, expert_profile_id, is_active")
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .eq("section_id", sectionId)
+    .maybeSingle<{ id: string; expert_profile_id: string; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; expert_profile_id: string; is_active: boolean } | null;
+    error: AppError | null;
+  }>;
+
+  const [
+    { data: consultation, error: consultationError },
+    { data: section, error: sectionError },
+    { data: comment, error: commentError },
+  ] = await Promise.all([consultationQuery, sectionQuery, commentQuery]);
+
+  if (consultationError || !consultation) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (sectionError || !section) {
+    return {
+      status: "error",
+      message: sectionError?.message || "La sezione selezionata non e' disponibile.",
+    };
+  }
+
+  if (commentError || !comment || !comment.is_active) {
+    return {
+      status: "error",
+      message: commentError?.message || "Il commento selezionato non e' disponibile.",
+    };
+  }
+
+  const commentsTable = supabase.from(
+    "expert_section_comments",
+  ) as unknown as ExpertSectionCommentsUpdateBuilder;
+  const updateQuery = commentsTable
+    .update({
+      title,
+      body_text: bodyText,
+      priority,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .eq("section_id", sectionId)
+    .select("id")
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await updateQuery;
+
+  if (error || !data) {
+    return {
+      status: "error",
+      message: error?.message || "Impossibile aggiornare il commento.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: "expert_section_comment_updated",
+    target_table: "expert_section_comments",
+    target_id: commentId,
+    metadata: {
+      expert_profile_id: comment.expert_profile_id,
+      priority,
+      section_id: sectionId,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/consultations");
+  revalidatePath(getConsultationDetailPath(consultationId));
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
+
+  return {
+    status: "success",
+    message: "Commento aggiornato correttamente.",
+  };
+}
+
+export async function deleteAdminConsultationCommentAction(
+  _previousState: UpdateAdminConsultationCommentFormState,
+  formData: FormData,
+): Promise<UpdateAdminConsultationCommentFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono eliminare commenti.",
+    };
+  }
+
+  const commentId = normalizeText(formData.get("commentId"));
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const sectionId = normalizeText(formData.get("sectionId"));
+
+  if (!commentId) {
+    return {
+      status: "error",
+      message: "Commento non valido.",
+    };
+  }
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  if (!sectionId) {
+    return {
+      status: "error",
+      message: "Sezione non valida.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const commentQuery = supabase
+    .from("expert_section_comments")
+    .select("id, expert_profile_id, is_active")
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .eq("section_id", sectionId)
+    .maybeSingle<{ id: string; expert_profile_id: string; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; expert_profile_id: string; is_active: boolean } | null;
+    error: AppError | null;
+  }>;
+
+  const [
+    { data: consultation, error: consultationError },
+    { data: comment, error: commentError },
+  ] = await Promise.all([consultationQuery, commentQuery]);
+
+  if (consultationError || !consultation) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (commentError || !comment || !comment.is_active) {
+    return {
+      status: "error",
+      message: commentError?.message || "Il commento selezionato non e' disponibile.",
+    };
+  }
+
+  const commentsTable = supabase.from(
+    "expert_section_comments",
+  ) as unknown as ExpertSectionCommentsSoftDeleteBuilder;
+  const deleteQuery = commentsTable
+    .update({
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .eq("section_id", sectionId)
+    .select("id")
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await deleteQuery;
+
+  if (error || !data) {
+    return {
+      status: "error",
+      message: error?.message || "Impossibile eliminare il commento.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: "expert_section_comment_deleted",
+    target_table: "expert_section_comments",
+    target_id: commentId,
+    metadata: {
+      expert_profile_id: comment.expert_profile_id,
+      section_id: sectionId,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/consultations");
+  revalidatePath(getConsultationDetailPath(consultationId));
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
+
+  return {
+    status: "success",
+    message: "Commento eliminato correttamente.",
   };
 }

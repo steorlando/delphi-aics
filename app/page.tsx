@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { ConfigurationNotice } from "@/components/configuration-notice";
 import { getPostLoginPath } from "@/lib/auth/guards";
-import { getAuthContext } from "@/lib/auth/session";
+import { getAuthContext, hasServerAuthSessionCookie } from "@/lib/auth/session";
 import { hasPublicSupabaseEnv } from "@/lib/env";
 
 export default async function HomePage() {
@@ -12,6 +12,10 @@ export default async function HomePage() {
         title="Configurazione Supabase mancante"
       />
     );
+  }
+
+  if (!(await hasServerAuthSessionCookie())) {
+    redirect("/login");
   }
 
   const { user, profile } = await getAuthContext();
