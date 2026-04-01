@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   deleteAdminConsultationCommentAction,
@@ -671,6 +672,14 @@ export function AdminConsultationCommentsManager({
           : `Sono presenti ${comments.length} ${comments.length === 1 ? "commento attivo" : "commenti attivi"} modificabili dagli amministratori.`
       }
       eyebrow="Commenti"
+      headerActions={(
+        <Link
+          className="inline-link-button"
+          href={`/admin/consultations/${consultationId}/deleted-comments`}
+        >
+          Commenti eliminati
+        </Link>
+      )}
       title="Rivedi i commenti degli esperti"
     >
       {sections.length === 0 ? (

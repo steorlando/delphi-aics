@@ -212,12 +212,18 @@ input {
   gap: 0.85rem;
 }
 
-.collapsible-panel-trigger {
-  width: 100%;
+.collapsible-panel-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.collapsible-panel-trigger {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.95rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -231,6 +237,14 @@ input {
   gap: 0.45rem;
 }
 
+.collapsible-panel-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  flex: 0 0 auto;
+}
+
 .collapsible-panel-trigger-icon {
   flex: 0 0 auto;
   min-width: 2.25rem;
@@ -238,10 +252,12 @@ input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.75);
   color: var(--accent-strong);
+  cursor: pointer;
   font-size: 1.25rem;
   line-height: 1;
 }
@@ -2087,6 +2103,72 @@ input {
   border-color: rgba(67, 98, 127, 0.28);
   background: linear-gradient(180deg, rgba(67, 98, 127, 0.14), rgba(67, 98, 127, 0.06));
   color: var(--accent-strong);
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.deleted-comments-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.deleted-comment-card {
+  gap: 0.65rem;
+  padding-top: 1.1rem;
+  padding-bottom: 1.1rem;
+}
+
+.deleted-comment-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.deleted-comment-card-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.22rem;
+}
+
+.deleted-comment-card-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.85rem;
+}
+
+.deleted-comment-card-title {
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.deleted-comment-card-context,
+.deleted-comment-card-subtitle {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.deleted-comment-restore-form {
+  flex: 0 0 auto;
+}
+
+.deleted-comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.deleted-comment-card .expert-review-comment-body {
+  margin-top: 0.05rem;
+  font-size: 0.95rem;
 }
 
 .expert-review-submit-button {

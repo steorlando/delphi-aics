@@ -180,3 +180,39 @@ export async function getExpertSectionCommentsByConsultationId(
 
   return data ?? [];
 }
+
+export async function getInactiveExpertSectionCommentsByConsultationId(
+  consultationId: string,
+) {
+  const supabase = createAdminSupabaseClient();
+  const query = supabase
+    .from("expert_section_comments")
+    .select(
+      [
+        "id",
+        "consultation_id",
+        "section_id",
+        "expert_profile_id",
+        "title",
+        "body_text",
+        "priority",
+        "is_active",
+        "created_at",
+        "updated_at",
+      ].join(", "),
+    )
+    .eq("consultation_id", consultationId)
+    .eq("is_active", false)
+    .order("updated_at", { ascending: false })
+    .returns<AdminConsultationCommentEntry[]>() as unknown as Promise<{
+    data: AdminConsultationCommentEntry[] | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}

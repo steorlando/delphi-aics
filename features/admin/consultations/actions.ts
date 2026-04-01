@@ -80,6 +80,11 @@ export type SendAdminCommentNotificationFormState = {
   message: string;
 };
 
+export type RestoreAdminConsultationCommentFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
 type AppError = {
   code?: string;
   message: string;
@@ -331,6 +336,10 @@ function normalizeStringArray(values: FormDataEntryValue[]) {
 
 function getConsultationDetailPath(consultationId: string) {
   return `/admin/consultations/${consultationId}`;
+}
+
+function getDeletedCommentsPath(consultationId: string) {
+  return `/admin/consultations/${consultationId}/deleted-comments`;
 }
 
 function getExpertConsultationPath(consultationId: string) {
@@ -1464,6 +1473,137 @@ export async function deleteAdminConsultationCommentAction(
       },
       sectionId,
     },
+  };
+}
+
+export async function restoreAdminConsultationCommentAction(
+  _previousState: RestoreAdminConsultationCommentFormState,
+  formData: FormData,
+): Promise<RestoreAdminConsultationCommentFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono ripristinare commenti.",
+    };
+  }
+
+  const commentId = normalizeText(formData.get("commentId"));
+  const consultationId = normalizeText(formData.get("consultationId"));
+
+  if (!commentId) {
+    return {
+      status: "error",
+      message: "Commento non valido.",
+    };
+  }
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const commentQuery = supabase
+    .from("expert_section_comments")
+    .select("id, expert_profile_id, section_id, is_active")
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .maybeSingle<{
+      id: string;
+      expert_profile_id: string;
+      is_active: boolean;
+      section_id: string;
+    }>() as unknown as Promise<{
+    data: {
+      id: string;
+      expert_profile_id: string;
+      is_active: boolean;
+      section_id: string;
+    } | null;
+    error: AppError | null;
+  }>;
+  const [
+    { data: consultation, error: consultationError },
+    { data: comment, error: commentError },
+  ] = await Promise.all([consultationQuery, commentQuery]);
+
+  if (consultationError || !consultation) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (commentError || !comment || comment.is_active) {
+    return {
+      status: "error",
+      message:
+        commentError?.message || "Il commento selezionato non e' disponibile per il ripristino.",
+    };
+  }
+
+  const commentsTable = supabase.from(
+    "expert_section_comments",
+  ) as unknown as ExpertSectionCommentsSoftDeleteBuilder;
+  const restoreQuery = commentsTable
+    .update({
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .eq("section_id", comment.section_id)
+    .select("id")
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await restoreQuery;
+
+  if (error || !data) {
+    return {
+      status: "error",
+      message: error?.message || "Impossibile ripristinare il commento.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: "expert_section_comment_restored",
+    target_table: "expert_section_comments",
+    target_id: commentId,
+    metadata: {
+      expert_profile_id: comment.expert_profile_id,
+      section_id: comment.section_id,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/consultations");
+  revalidatePath(getConsultationDetailPath(consultationId));
+  revalidatePath(getDeletedCommentsPath(consultationId));
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
+
+  return {
+    status: "success",
+    message: "Commento ripristinato correttamente.",
   };
 }
 
