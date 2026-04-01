@@ -397,7 +397,7 @@ function EditCommentInlineForm({
         <button
           aria-label={isDeleting ? "Eliminazione commento in corso" : "Elimina commento"}
           className="secondary-button small-button icon-action-button destructive-button"
-          disabled={isPending || isDeleting}
+          disabled={!canSubmitComments || isPending || isDeleting}
           formAction={deleteAction}
           type="submit"
         >
@@ -690,14 +690,24 @@ export function ExpertConsultationReview({
         ) : null}
 
         {selectedSection ? (
-          <aside className="panel-card expert-review-comments-panel expert-review-comments-composer-panel">
-            <SectionCommentComposer
-              canSubmitComments={canSubmitComments}
-              consultationId={consultationId}
-              key={selectedSection.id}
-              section={selectedSection}
-            />
-          </aside>
+          canSubmitComments ? (
+            <aside className="panel-card expert-review-comments-panel expert-review-comments-composer-panel">
+              <SectionCommentComposer
+                canSubmitComments={canSubmitComments}
+                consultationId={consultationId}
+                key={selectedSection.id}
+                section={selectedSection}
+              />
+            </aside>
+          ) : (
+            <aside className="panel-card expert-review-comments-panel expert-review-comments-composer-panel">
+              <div className="expert-review-composer">
+                <p className="form-success expert-review-inline-feedback">
+                  In questa fase puoi solo consultare i commenti che hai gia&apos; inserito.
+                </p>
+              </div>
+            </aside>
+          )
         ) : null}
       </div>
     </section>

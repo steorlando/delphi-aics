@@ -69,7 +69,7 @@ function RestoreDeletedCommentCard({
   }, [router, state.status]);
 
   return (
-    <article className="panel-card panel-card-wide deleted-comment-card">
+    <article className="panel-card deleted-comment-card">
       <div className="deleted-comment-card-header">
         <div className="deleted-comment-card-main">
           <div className="deleted-comment-card-topline">

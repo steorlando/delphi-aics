@@ -96,10 +96,14 @@ export function getExpertConsultationPageContent(
         title:
           consultation.current_state === "phase_1_open"
             ? "Area commenti expert"
+            : consultation.current_state === "admin_review"
+              ? "Consultazione in accorpamento commenti"
             : "Consultazione in fase commenti",
         body:
           consultation.current_state === "phase_1_open"
             ? "Leggi le sezioni del documento, naviga il contenuto HTML completo e inserisci commenti strutturati per ciascuna sezione."
+            : consultation.current_state === "admin_review"
+              ? "Gli amministratori stanno accorpando i commenti ricevuti. In questa fase puoi solo rileggere i tuoi commenti gia' inseriti, senza aggiungerne o modificarne di nuovi."
             : "La fase di inserimento e' chiusa, ma puoi continuare a consultare le sezioni e rileggere i commenti gia' inviati.",
         stateLabel,
       };

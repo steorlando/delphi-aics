@@ -2114,13 +2114,17 @@ input {
 
 .deleted-comments-list {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 38rem));
   gap: 1rem;
+  justify-content: start;
+  align-items: start;
 }
 
 .deleted-comment-card {
   gap: 0.65rem;
   padding-top: 1.1rem;
   padding-bottom: 1.1rem;
+  width: 100%;
 }
 
 .deleted-comment-card-header {
