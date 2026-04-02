@@ -581,17 +581,20 @@ export async function resendAdminInviteAction(
   }
 
   const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
-  const { error: inviteError } = await supabase.auth.resetPasswordForEmail(
-    adminProfile.email,
-    {
-      redirectTo,
+  const { error: inviteError } = await supabase.auth.signInWithOtp({
+    email: adminProfile.email,
+    options: {
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: false,
     },
-  );
+  });
 
   if (inviteError) {
     return {
       status: "error",
-      message: inviteError.message,
+      message:
+        inviteError.message ||
+        "Impossibile reinviare l'email di primo accesso all'amministratore.",
     };
   }
 
@@ -603,6 +606,7 @@ export async function resendAdminInviteAction(
     metadata: {
       email: adminProfile.email,
       redirect_to: redirectTo,
+      delivery_type: "magiclink",
     },
   });
 

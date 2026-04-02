@@ -833,17 +833,20 @@ export async function resendExpertInviteAction(
   }
 
   const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
-  const { error: inviteError } = await supabase.auth.resetPasswordForEmail(
-    expert.email,
-    {
-      redirectTo,
+  const { error: inviteError } = await supabase.auth.signInWithOtp({
+    email: expert.email,
+    options: {
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: false,
     },
-  );
+  });
 
   if (inviteError) {
     return {
       status: "error" as const,
-      message: inviteError.message,
+      message:
+        inviteError.message ||
+        "Impossibile reinviare l'email di primo accesso all'esperto.",
     };
   }
 
@@ -855,6 +858,7 @@ export async function resendExpertInviteAction(
     metadata: {
       email: expert.email,
       redirect_to: redirectTo,
+      delivery_type: "magiclink",
     },
   });
 
