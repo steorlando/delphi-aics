@@ -2,16 +2,42 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   ExpertAssignedConsultationEntry,
+  ExpertPhase2VoteScore,
+  ExpertPhase2VotableCommentEntry,
   ExpertConsultationSectionEntry,
   ExpertSectionCommentEntry,
 } from "@/features/expert/consultations/shared";
 
 type AppError = {
+  code?: string;
   message: string;
 };
 
+function isMissingRelationError(error: AppError | null, relationName: string) {
+  if (!error?.message) {
+    return false;
+  }
+
+  return error.message.includes(`Could not find the table 'public.${relationName}'`);
+}
+
 type ConsultationParticipantLookup = {
   consultation_id: string;
+};
+
+type ExpertPhase2CommentLookup = {
+  id: string;
+  consultation_id: string;
+  section_id: string;
+  title: string;
+  body_text: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+type Phase2VoteLookup = {
+  comment_id: string;
+  score: ExpertPhase2VoteScore;
 };
 
 const consultationSelect = [
@@ -187,4 +213,92 @@ export async function getExpertSectionComments(
   }
 
   return data ?? [];
+}
+
+export async function getExpertPhase2VotableComments(
+  profileId: string,
+  consultationId: string,
+) {
+  const supabase = createAdminSupabaseClient();
+  const assignmentQuery = supabase
+    .from("consultation_participants")
+    .select("consultation_id")
+    .eq("consultation_id", consultationId)
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .maybeSingle<ConsultationParticipantLookup>() as unknown as Promise<{
+    data: ConsultationParticipantLookup | null;
+    error: AppError | null;
+  }>;
+  const commentsQuery = supabase
+    .from("expert_section_comments")
+    .select(
+      [
+        "id",
+        "consultation_id",
+        "section_id",
+        "title",
+        "body_text",
+        "is_active",
+        "created_at",
+      ].join(", "),
+    )
+    .eq("consultation_id", consultationId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .returns<ExpertPhase2CommentLookup[]>() as unknown as Promise<{
+    data: ExpertPhase2CommentLookup[] | null;
+    error: AppError | null;
+  }>;
+  const votesQuery = supabase
+    .from("expert_section_comment_votes")
+    .select("comment_id, score")
+    .eq("consultation_id", consultationId)
+    .eq("voter_profile_id", profileId)
+    .returns<Phase2VoteLookup[]>() as unknown as Promise<{
+    data: Phase2VoteLookup[] | null;
+    error: AppError | null;
+  }>;
+
+  const [
+    { data: assignment, error: assignmentError },
+    { data: phase2Comments, error: phase2CommentsError },
+    { data: phase2Votes, error: phase2VotesError },
+  ] = await Promise.all([assignmentQuery, commentsQuery, votesQuery]);
+
+  if (assignmentError) {
+    throw assignmentError;
+  }
+
+  if (!assignment) {
+    return [] as ExpertPhase2VotableCommentEntry[];
+  }
+
+  if (phase2CommentsError) {
+    throw phase2CommentsError;
+  }
+
+  if (phase2VotesError && !isMissingRelationError(phase2VotesError, "expert_section_comment_votes")) {
+    throw phase2VotesError;
+  }
+
+  const comments = phase2Comments ?? [];
+
+  if (comments.length === 0) {
+    return [] as ExpertPhase2VotableCommentEntry[];
+  }
+
+  const currentVoteByItemId = new Map(
+    (phase2Votes ?? []).map((vote) => [vote.comment_id, vote.score]),
+  );
+
+  return comments.map((comment) => ({
+    id: comment.id,
+    consultation_id: comment.consultation_id,
+    section_id: comment.section_id,
+    display_title: comment.title,
+    display_body: comment.body_text ?? "",
+    order_index: null,
+    current_vote_score: currentVoteByItemId.get(comment.id) ?? null,
+  }));
 }

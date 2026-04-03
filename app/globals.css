@@ -2020,6 +2020,114 @@ input {
   font-size: 0.82rem;
 }
 
+.phase-2-vote-card {
+  gap: 0.7rem;
+}
+
+.phase-2-side-column {
+  height: 100%;
+  min-height: 0;
+}
+
+.phase-2-comments-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.phase-2-comments-history .expert-review-comment-list-compact {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+.phase-2-vote-card-details {
+  gap: 0.75rem;
+}
+
+.phase-2-vote-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.phase-2-vote-scale {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.phase-2-vote-option {
+  min-height: 2.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.phase-2-vote-option:hover,
+.phase-2-vote-option:focus-visible {
+  border-color: rgba(67, 98, 127, 0.3);
+  background: rgba(67, 98, 127, 0.08);
+}
+
+.phase-2-vote-option-selected {
+  border-color: rgba(67, 98, 127, 0.32);
+  background: linear-gradient(180deg, rgba(67, 98, 127, 0.16), rgba(67, 98, 127, 0.08));
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(67, 98, 127, 0.08);
+}
+
+.phase-2-vote-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.phase-2-vote-current {
+  color: var(--text-soft);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.phase-2-legend-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.phase-2-legend-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.phase-2-legend-item strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  border-radius: 999px;
+  background: rgba(67, 98, 127, 0.1);
+  color: var(--accent-strong);
+}
+
+.phase-2-legend-item span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .admin-consultation-comment-author {
   color: var(--text-soft);
   font-size: 0.82rem;
@@ -2277,6 +2385,22 @@ input {
   .expert-review-priority-row {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .phase-2-vote-scale {
+    grid-template-columns: repeat(5, minmax(2.5rem, 1fr));
+  }
+
+  .phase-2-side-column {
+    height: auto;
+  }
+
+  .phase-2-comments-history {
+    height: auto;
+  }
+
+  .phase-2-comments-history .expert-review-comment-list-compact {
+    height: auto;
   }
 }
 
