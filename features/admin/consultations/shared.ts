@@ -98,6 +98,9 @@ export type AdminConsultationCommentEntry = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  is_phase_2_reviewed: boolean;
+  vote_count: number;
+  average_vote_score: number | null;
 };
 
 export function formatConsultationStateLabel(state: ConsultationState) {

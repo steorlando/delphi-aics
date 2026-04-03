@@ -6,14 +6,17 @@ import { useRouter } from "next/navigation";
 import {
   deleteAdminConsultationCommentAction,
   notifyAdminCommentAuthorAction,
+  toggleAdminConsultationCommentPhase2ReviewAction,
   updateAdminConsultationCommentAction,
   type AdminCommentNotificationContext,
   type SendAdminCommentNotificationFormState,
+  type ToggleAdminConsultationCommentPhase2ReviewFormState,
   type UpdateAdminConsultationCommentFormState,
 } from "@/features/admin/consultations/actions";
 import { CollapsiblePanel } from "@/features/admin/consultations/collapsible-panel";
 import type {
   AdminConsultationCommentEntry,
+  ConsultationState,
   DocumentSectionEntry,
 } from "@/features/admin/consultations/shared";
 import type { ExpertDirectoryEntry } from "@/features/admin/experts/queries";
@@ -25,6 +28,7 @@ import {
 type AdminConsultationCommentsManagerProps = {
   comments: AdminConsultationCommentEntry[];
   consultationId: string;
+  consultationState: ConsultationState;
   experts: ExpertDirectoryEntry[];
   sections: DocumentSectionEntry[];
 };
@@ -39,6 +43,15 @@ const initialNotificationState: SendAdminCommentNotificationFormState = {
   status: "idle",
   message: "",
 };
+
+const initialPhase2ReviewState: ToggleAdminConsultationCommentPhase2ReviewFormState = {
+  status: "idle",
+  message: "",
+};
+
+const voteAverageFormatter = new Intl.NumberFormat("it-IT", {
+  maximumFractionDigits: 2,
+});
 
 function formatCommentDate(value: string) {
   return new Intl.DateTimeFormat("it-IT", {
@@ -66,6 +79,18 @@ function getExpertCompactLabel(expert: ExpertDirectoryEntry | null) {
   }
 
   return `${getExpertDisplayLabel(expert)} - ${expert.institution_name || "Istituzione non indicata"}`;
+}
+
+function formatVoteCountLabel(value: number) {
+  return `${value} ${value === 1 ? "voto" : "voti"}`;
+}
+
+function formatVoteAverageLabel(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  return voteAverageFormatter.format(value);
 }
 
 function getInitialSelectedSectionId(
@@ -583,9 +608,93 @@ function AdminCommentNotificationModal({
   );
 }
 
+function AdminPhase2ReviewToggle({
+  commentId,
+  consultationId,
+  isChecked,
+  onCommittedChange,
+  onOptimisticChange,
+}: {
+  commentId: string;
+  consultationId: string;
+  isChecked: boolean;
+  onCommittedChange: (nextValue: boolean) => void;
+  onOptimisticChange: (nextValue: boolean) => void;
+}) {
+  const router = useRouter();
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+  const [checked, setChecked] = useState(isChecked);
+  const [state, formAction, isPending] = useActionState(
+    toggleAdminConsultationCommentPhase2ReviewAction,
+    initialPhase2ReviewState,
+  );
+
+  useEffect(() => {
+    setChecked(isChecked);
+    if (hiddenInputRef.current) {
+      hiddenInputRef.current.value = String(isChecked);
+    }
+  }, [isChecked]);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      onCommittedChange(checked);
+      router.refresh();
+    }
+  }, [checked, onCommittedChange, router, state.status]);
+
+  useEffect(() => {
+    if (state.status === "error") {
+      setChecked(isChecked);
+      onOptimisticChange(isChecked);
+    }
+  }, [isChecked, onOptimisticChange, state.status]);
+
+  return (
+    <form action={formAction} className="admin-consultation-phase-2-review-form">
+      <input name="commentId" type="hidden" value={commentId} />
+      <input name="consultationId" type="hidden" value={consultationId} />
+      <input
+        defaultValue={String(checked)}
+        name="isPhase2Reviewed"
+        ref={hiddenInputRef}
+        type="hidden"
+      />
+
+      <label
+        className={`admin-consultation-phase-2-review-toggle${checked ? " admin-consultation-phase-2-review-toggle-checked" : ""}`}
+      >
+        <input
+          checked={checked}
+          disabled={isPending}
+          name="phase2ReviewedToggle"
+          onChange={(event) => {
+            const nextValue = event.target.checked;
+            setChecked(nextValue);
+            onOptimisticChange(nextValue);
+            if (hiddenInputRef.current) {
+              hiddenInputRef.current.value = String(nextValue);
+            }
+            event.currentTarget.form?.requestSubmit();
+          }}
+          type="checkbox"
+        />
+        <span>Gia&apos; integrato nel documento rivisto</span>
+      </label>
+
+      {state.status === "error" && state.message ? (
+        <p className="form-error admin-consultation-phase-2-review-feedback">
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
 export function AdminConsultationCommentsManager({
   comments,
   consultationId,
+  consultationState,
   experts,
   sections,
 }: AdminConsultationCommentsManagerProps) {
@@ -595,6 +704,7 @@ export function AdminConsultationCommentsManager({
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [pendingNotificationContext, setPendingNotificationContext] =
     useState<AdminCommentNotificationContext | null>(null);
+  const [phase2ReviewOverrides, setPhase2ReviewOverrides] = useState<Record<string, boolean>>({});
   const [selectedSectionId, setSelectedSectionId] = useState(() =>
     getInitialSelectedSectionId(sections, comments),
   );
@@ -617,6 +727,8 @@ export function AdminConsultationCommentsManager({
   const selectedSectionComments = selectedSection
     ? commentsBySection.get(selectedSection.id) ?? []
     : [];
+  const isPhase2State = consultationState === "phase_2_open"
+    || consultationState === "phase_2_closed";
 
   useEffect(() => {
     const nextSectionId = getInitialSelectedSectionId(sections, comments);
@@ -635,6 +747,10 @@ export function AdminConsultationCommentsManager({
     setExpandedCommentId(null);
     setEditingCommentId(null);
   }, [selectedSectionId]);
+
+  useEffect(() => {
+    setPhase2ReviewOverrides({});
+  }, [comments]);
 
   function handleSectionSelect(sectionId: string) {
     setSelectedSectionId(sectionId);
@@ -661,6 +777,20 @@ export function AdminConsultationCommentsManager({
   function closeNotificationModal() {
     setPendingNotificationContext(null);
     router.refresh();
+  }
+
+  function handlePhase2ReviewOptimisticChange(commentId: string, nextValue: boolean) {
+    setPhase2ReviewOverrides((current) => ({
+      ...current,
+      [commentId]: nextValue,
+    }));
+  }
+
+  function handlePhase2ReviewCommitted(commentId: string, nextValue: boolean) {
+    if (nextValue) {
+      setExpandedCommentId((current) => (current === commentId ? null : current));
+      setEditingCommentId((current) => (current === commentId ? null : current));
+    }
   }
 
   return (
@@ -806,10 +936,16 @@ export function AdminConsultationCommentsManager({
                     const isEditing = editingCommentId === comment.id;
                     const author = expertsById.get(comment.expert_profile_id) ?? null;
                     const compactAuthorLabel = getExpertCompactLabel(author);
+                    const isPhase2Reviewed = Object.prototype.hasOwnProperty.call(
+                      phase2ReviewOverrides,
+                      comment.id,
+                    )
+                      ? phase2ReviewOverrides[comment.id]
+                      : comment.is_phase_2_reviewed;
 
                     return (
                       <article
-                        className={`expert-review-comment-card expert-review-comment-card-compact${isExpanded ? " expert-review-comment-card-expanded" : ""}${isEditing ? " expert-review-comment-card-editing" : ""}`}
+                        className={`expert-review-comment-card expert-review-comment-card-compact${isExpanded ? " expert-review-comment-card-expanded" : ""}${isEditing ? " expert-review-comment-card-editing" : ""}${isPhase2State && isPhase2Reviewed ? " admin-consultation-comment-card-reviewed" : ""}`}
                         key={comment.id}
                       >
                         <div className="expert-review-comment-row">
@@ -818,9 +954,20 @@ export function AdminConsultationCommentsManager({
                               <strong className="expert-review-comment-row-title">
                                 {comment.title}
                               </strong>
-                              <span className="expert-review-priority-badge">
-                                {formatExpertCommentPriorityLabel(comment.priority)}
-                              </span>
+                              {isPhase2State ? (
+                                <div className="admin-consultation-vote-summary">
+                                  <span className="expert-review-priority-badge admin-consultation-vote-badge">
+                                    {formatVoteCountLabel(comment.vote_count)}
+                                  </span>
+                                  <span className="expert-review-priority-badge admin-consultation-vote-badge">
+                                    Media: {formatVoteAverageLabel(comment.average_vote_score)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="expert-review-priority-badge">
+                                  {formatExpertCommentPriorityLabel(comment.priority)}
+                                </span>
+                              )}
                             </div>
                             <span className="admin-consultation-comment-author">
                               {compactAuthorLabel}
@@ -883,6 +1030,22 @@ export function AdminConsultationCommentsManager({
                                 )}
                               </>
                             )}
+                          </div>
+                        ) : null}
+
+                        {isPhase2State ? (
+                          <div className="admin-consultation-comment-footer">
+                            <AdminPhase2ReviewToggle
+                              commentId={comment.id}
+                              consultationId={consultationId}
+                              isChecked={isPhase2Reviewed}
+                              onCommittedChange={(nextValue) =>
+                                handlePhase2ReviewCommitted(comment.id, nextValue)
+                              }
+                              onOptimisticChange={(nextValue) =>
+                                handlePhase2ReviewOptimisticChange(comment.id, nextValue)
+                              }
+                            />
                           </div>
                         ) : null}
                       </article>

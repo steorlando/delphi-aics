@@ -57,6 +57,7 @@ export default async function AdminConsultationDetailPage({
       <AdminConsultationCommentsManager
         comments={comments}
         consultationId={consultation.id}
+        consultationState={consultation.current_state}
         experts={experts}
         sections={sections}
       />

@@ -85,6 +85,11 @@ export type RestoreAdminConsultationCommentFormState = {
   message: string;
 };
 
+export type ToggleAdminConsultationCommentPhase2ReviewFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
 type AppError = {
   code?: string;
   message: string;
@@ -237,6 +242,24 @@ type ExpertSectionCommentsSoftDeleteBuilder = {
   };
 };
 
+type ExpertSectionCommentsPhase2ReviewBuilder = {
+  update(values: {
+    is_phase_2_reviewed: boolean;
+    updated_at: string;
+  }): {
+    eq(column: string, value: string): {
+      eq(column: string, value: string): {
+        select(columns: string): {
+          maybeSingle<T>(): Promise<{
+            data: T | null;
+            error: AppError | null;
+          }>;
+        };
+      };
+    };
+  };
+};
+
 type ConsultationParticipantsInsertBuilder = {
   insert(
     values:
@@ -273,6 +296,16 @@ function normalizeOptionalText(value: FormDataEntryValue | null) {
 
 function normalizeBooleanValue(value: FormDataEntryValue | null) {
   return normalizeText(value) === "true";
+}
+
+function normalizeStrictBooleanValue(value: FormDataEntryValue | null) {
+  const normalized = normalizeText(value);
+
+  if (normalized !== "true" && normalized !== "false") {
+    return null;
+  }
+
+  return normalized === "true";
 }
 
 function normalizePositiveInteger(value: FormDataEntryValue | null) {
@@ -336,6 +369,19 @@ function normalizeStringArray(values: FormDataEntryValue[]) {
 
 function getConsultationDetailPath(consultationId: string) {
   return `/admin/consultations/${consultationId}`;
+}
+
+function isMissingColumnError(
+  error: AppError | null,
+  relationName: string,
+  columnName: string,
+) {
+  if (!error?.message) {
+    return false;
+  }
+
+  return error.message.includes(`'${columnName}' column of '${relationName}'`)
+    || error.message.includes(`${relationName}.${columnName}`);
 }
 
 function getDeletedCommentsPath(consultationId: string) {
@@ -1473,6 +1519,157 @@ export async function deleteAdminConsultationCommentAction(
       },
       sectionId,
     },
+  };
+}
+
+export async function toggleAdminConsultationCommentPhase2ReviewAction(
+  _previousState: ToggleAdminConsultationCommentPhase2ReviewFormState,
+  formData: FormData,
+): Promise<ToggleAdminConsultationCommentPhase2ReviewFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono segnare i commenti lavorati.",
+    };
+  }
+
+  const commentId = normalizeText(formData.get("commentId"));
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const isPhase2Reviewed = normalizeStrictBooleanValue(formData.get("isPhase2Reviewed"));
+
+  if (!commentId) {
+    return {
+      status: "error",
+      message: "Commento non valido.",
+    };
+  }
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  if (isPhase2Reviewed === null) {
+    return {
+      status: "error",
+      message: "Valore del checkbox non valido.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id, current_state")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string; current_state: ConsultationState }>() as unknown as Promise<{
+    data: { id: string; current_state: ConsultationState } | null;
+    error: AppError | null;
+  }>;
+  const commentQuery = supabase
+    .from("expert_section_comments")
+    .select("id, expert_profile_id, section_id, is_active")
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .maybeSingle<{
+      id: string;
+      expert_profile_id: string;
+      section_id: string;
+      is_active: boolean;
+    }>() as unknown as Promise<{
+    data: {
+      id: string;
+      expert_profile_id: string;
+      section_id: string;
+      is_active: boolean;
+    } | null;
+    error: AppError | null;
+  }>;
+  const [
+    { data: consultation, error: consultationError },
+    { data: comment, error: commentError },
+  ] = await Promise.all([consultationQuery, commentQuery]);
+
+  if (consultationError || !consultation) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (
+    consultation.current_state !== "phase_2_open"
+    && consultation.current_state !== "phase_2_closed"
+  ) {
+    return {
+      status: "error",
+      message: "Questo checkbox e' disponibile solo durante la fase di votazione commenti.",
+    };
+  }
+
+  if (commentError || !comment || !comment.is_active) {
+    return {
+      status: "error",
+      message: commentError?.message || "Il commento selezionato non e' disponibile.",
+    };
+  }
+
+  const commentsTable = supabase.from(
+    "expert_section_comments",
+  ) as unknown as ExpertSectionCommentsPhase2ReviewBuilder;
+  const updateQuery = commentsTable
+    .update({
+      is_phase_2_reviewed: isPhase2Reviewed,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .select("id")
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await updateQuery;
+
+  if (error || !data) {
+    return {
+      status: "error",
+      message: isMissingColumnError(error, "expert_section_comments", "is_phase_2_reviewed")
+        ? "Il database non e' ancora pronto per salvare questo flag. Applica prima la nuova migrazione."
+        : error?.message || "Impossibile aggiornare lo stato di lavorazione del commento.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: isPhase2Reviewed
+      ? "expert_section_comment_phase_2_reviewed"
+      : "expert_section_comment_phase_2_unreviewed",
+    target_table: "expert_section_comments",
+    target_id: commentId,
+    metadata: {
+      expert_profile_id: comment.expert_profile_id,
+      section_id: comment.section_id,
+      is_phase_2_reviewed: String(isPhase2Reviewed),
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/consultations");
+  revalidatePath(getConsultationDetailPath(consultationId));
+
+  return {
+    status: "success",
+    message: isPhase2Reviewed
+      ? "Commento segnato come gia' integrato."
+      : "Commento riaperto tra quelli da lavorare.",
   };
 }
 
