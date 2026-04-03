@@ -121,17 +121,19 @@ export default async function ExpertConsultationPage({
               finche&apos; la consultazione resta aperta.
             </p>
           </div>
-        ) : consultation.description ? (
-          <div className="expert-consultation-detail-block">
-            <strong>Descrizione consultazione</strong>
-            <p>{consultation.description}</p>
-          </div>
         ) : null}
 
         {consultationView !== "phase_2" && consultation.document_description ? (
           <div className="expert-consultation-detail-block">
             <strong>Descrizione documento</strong>
             <p>{consultation.document_description}</p>
+          </div>
+        ) : null}
+
+        {consultationView !== "phase_2" && consultation.description ? (
+          <div className="expert-consultation-detail-block">
+            <strong>Istruzioni per questa fase</strong>
+            <p>{consultation.description}</p>
           </div>
         ) : null}
 
