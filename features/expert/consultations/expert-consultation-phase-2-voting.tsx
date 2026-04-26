@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
+  deleteExpertPhase2VoteNoteAction,
   saveExpertPhase2VoteNoteAction,
   saveExpertPhase2VoteAction,
   type SaveExpertPhase2VoteNoteFormState,
@@ -72,6 +73,44 @@ function Phase2CurrentUserNote({
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="14"
+      viewBox="0 0 24 24"
+      width="14"
+    >
+      <path
+        d="M5 7h14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M9 7V5.75A1.75 1.75 0 0 1 10.75 4h2.5A1.75 1.75 0 0 1 15 5.75V7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M7 7l.7 11.1A1.75 1.75 0 0 0 9.44 19.75h5.12a1.75 1.75 0 0 0 1.74-1.65L17 7"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M10 10.5v5M14 10.5v5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.7"
+      />
+    </svg>
+  );
+}
+
 function Phase2VoteNoteInlineForm({
   consultationId,
   onClose,
@@ -89,6 +128,10 @@ function Phase2VoteNoteInlineForm({
     saveExpertPhase2VoteNoteAction,
     initialVoteNoteState,
   );
+  const [deleteState, deleteAction, isDeleting] = useActionState(
+    deleteExpertPhase2VoteNoteAction,
+    initialVoteNoteState,
+  );
 
   useEffect(() => {
     setNoteText(votableComment.current_user_note?.body_text ?? "");
@@ -101,6 +144,13 @@ function Phase2VoteNoteInlineForm({
     }
   }, [onClose, router, state.status]);
 
+  useEffect(() => {
+    if (deleteState.status === "success") {
+      onClose();
+      router.refresh();
+    }
+  }, [deleteState.status, onClose, router]);
+
   return (
     <form action={formAction} className="auth-form phase-2-note-inline-form">
       <input name="consultationId" type="hidden" value={consultationId} />
@@ -112,6 +162,7 @@ function Phase2VoteNoteInlineForm({
         </span>
         <textarea
           autoFocus
+          disabled={isPending || isDeleting}
           maxLength={2500}
           name="bodyText"
           onChange={(event) => setNoteText(event.target.value)}
@@ -129,15 +180,38 @@ function Phase2VoteNoteInlineForm({
         <p className="form-error expert-review-inline-feedback">{state.message}</p>
       ) : null}
 
+      {deleteState.status === "error" && deleteState.message ? (
+        <p className="form-error expert-review-inline-feedback">{deleteState.message}</p>
+      ) : null}
+
       <div className="compact-form-actions expert-review-form-actions">
         <button
           className="secondary-button small-button"
+          disabled={isPending || isDeleting}
           onClick={onClose}
           type="button"
         >
           Annulla
         </button>
-        <button className="primary-button small-button" disabled={isPending} type="submit">
+
+        {votableComment.current_user_note ? (
+          <button
+            aria-label={isDeleting ? "Eliminazione commento in corso" : "Elimina commento"}
+            className="secondary-button small-button icon-action-button destructive-button"
+            disabled={isPending || isDeleting}
+            formAction={deleteAction}
+            type="submit"
+          >
+            <TrashIcon />
+            <span className="sr-only">Elimina commento</span>
+          </button>
+        ) : null}
+
+        <button
+          className="primary-button small-button"
+          disabled={isPending || isDeleting}
+          type="submit"
+        >
           {isPending ? "Salvataggio..." : "Salva commento"}
         </button>
       </div>
