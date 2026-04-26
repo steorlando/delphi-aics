@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   saveExpertPhase2VoteNoteAction,
@@ -25,6 +25,7 @@ type ExpertConsultationPhase2VotingProps = {
 type Phase2VoteFormProps = {
   canSubmitVotes: boolean;
   consultationId: string;
+  noteAction?: ReactNode;
   votableComment: ExpertPhase2VotableCommentEntry;
 };
 
@@ -146,6 +147,7 @@ function Phase2VoteNoteInlineForm({
 function Phase2VoteForm({
   canSubmitVotes,
   consultationId,
+  noteAction,
   votableComment,
 }: Phase2VoteFormProps) {
   const router = useRouter();
@@ -206,19 +208,21 @@ function Phase2VoteForm({
         })}
       </div>
 
-      <div className="phase-2-vote-meta">
-        <span className="phase-2-vote-current">
-          {selectedScore === null
-            ? "Nessun voto espresso"
-            : `Valore selezionato: ${selectedScore}`}
-        </span>
+      {selectedScore === null || !canSubmitVotes || noteAction ? (
+        <div className="phase-2-vote-meta">
+          {selectedScore === null ? (
+            <span className="phase-2-vote-current">Nessun voto espresso</span>
+          ) : null}
 
-        {!canSubmitVotes ? (
-          <span className="expert-review-comment-date">
-            Votazione in sola lettura
-          </span>
-        ) : null}
-      </div>
+          {!canSubmitVotes ? (
+            <span className="expert-review-comment-date">
+              Votazione in sola lettura
+            </span>
+          ) : null}
+
+          {noteAction}
+        </div>
+      ) : null}
 
       {state.status === "error" && state.message ? (
         <p className="form-error expert-review-inline-feedback">{state.message}</p>
@@ -237,6 +241,19 @@ function Phase2VotableCommentCard({
   votableComment,
 }: Phase2VoteFormProps) {
   const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+  const noteAction = canSubmitVotes ? (
+    <button
+      className="phase-2-note-link"
+      onClick={() => setIsNoteEditorOpen((current) => !current)}
+      type="button"
+    >
+      {isNoteEditorOpen
+        ? "Chiudi"
+        : votableComment.current_user_note
+          ? "Modifica commento"
+          : "Commenta"}
+    </button>
+  ) : null;
 
   return (
     <article
@@ -264,24 +281,9 @@ function Phase2VotableCommentCard({
         <Phase2VoteForm
           canSubmitVotes={canSubmitVotes}
           consultationId={consultationId}
+          noteAction={noteAction}
           votableComment={votableComment}
         />
-
-        <div className="phase-2-vote-card-footer">
-          {canSubmitVotes ? (
-            <button
-              className="phase-2-note-link"
-              onClick={() => setIsNoteEditorOpen((current) => !current)}
-              type="button"
-            >
-              {isNoteEditorOpen
-                ? "Chiudi"
-                : votableComment.current_user_note
-                  ? "Modifica commento"
-                  : "Commenta"}
-            </button>
-          ) : null}
-        </div>
 
         {isNoteEditorOpen ? (
           <Phase2VoteNoteInlineForm
