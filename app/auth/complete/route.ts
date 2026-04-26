@@ -23,20 +23,24 @@ function isEmailOtpType(value: string): value is EmailOtpType {
   return emailOtpTypes.has(value as EmailOtpType);
 }
 
-export async function GET(request: NextRequest) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get("code");
-  const tokenHash = requestUrl.searchParams.get("token_hash");
-  const type = requestUrl.searchParams.get("type");
-  const next = requestUrl.searchParams.get("next") ?? "/";
+function normalizeValue(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export async function POST(request: NextRequest) {
+  const formData = await request.formData();
+  const code = normalizeValue(formData.get("code"));
+  const tokenHash = normalizeValue(formData.get("token_hash"));
+  const type = normalizeValue(formData.get("type"));
+  const next = normalizeValue(formData.get("next")) || "/";
   const safeNext = next.startsWith("/") ? next : "/";
-  const redirectUrl = new URL(safeNext, requestUrl.origin);
+  const redirectUrl = new URL(safeNext, request.url);
 
   if (type === "recovery") {
     redirectUrl.searchParams.set("mode", "recovery");
   }
 
-  const response = NextResponse.redirect(redirectUrl);
+  const response = NextResponse.redirect(redirectUrl, 303);
 
   const supabase = createServerClient(
     getSupabaseUrl(),
@@ -75,6 +79,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(
-    new URL("/login?error=invite_invalid", requestUrl.origin),
+    new URL("/login?error=invite_invalid", request.url),
+    303,
   );
 }

@@ -26,7 +26,8 @@ export default async function ChangePasswordPage({
 
   const { user, profile } = await getAuthContext();
   const { mode } = await searchParams;
-  const isRecoveryMode = mode === "recovery";
+  const isFirstAccess = profile?.must_reset_password ?? false;
+  const isRecoveryMode = mode === "recovery" && !isFirstAccess;
 
   if (!user) {
     redirect("/login");
@@ -36,7 +37,7 @@ export default async function ChangePasswordPage({
     redirect("/login?error=profile_missing");
   }
 
-  if (!profile.must_reset_password && !isRecoveryMode) {
+  if (!isFirstAccess && !isRecoveryMode) {
     redirect(getRoleHome(profile.role));
   }
 
@@ -59,7 +60,7 @@ export default async function ChangePasswordPage({
         </p>
         <ChangePasswordForm
           email={profile.email}
-          isRecoveryMode={isRecoveryMode}
+          shouldCompleteFirstAccess={isFirstAccess}
         />
       </section>
     </main>

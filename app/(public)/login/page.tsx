@@ -12,7 +12,7 @@ function getErrorMessage(errorCode?: string) {
   }
 
   if (errorCode === "invite_invalid") {
-    return "Il link di invito non e' valido o e' scaduto. Chiedi a un amministratore di inviarne uno nuovo.";
+    return "Il link di accesso non e' valido, e' scaduto oppure e' gia' stato aperto. Se l'account esiste gia', usa 'Password dimenticata?' con la stessa email; in alternativa chiedi a un amministratore di inviare un nuovo accesso.";
   }
 
   return null;
