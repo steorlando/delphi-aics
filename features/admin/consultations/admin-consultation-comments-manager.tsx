@@ -79,6 +79,32 @@ function getInitialSelectedSectionId(
     ?? "";
 }
 
+function AdminPhase2VoteNotes({
+  notes,
+}: {
+  notes: NonNullable<AdminConsultationCommentEntry["phase_2_vote_notes"]>;
+}) {
+  if (notes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="phase-2-note-list admin-phase-2-note-list">
+      <span className="phase-2-note-list-title">
+        Commenti alla votazione degli esperti
+      </span>
+      {notes.map((note, index) => (
+        <article className="phase-2-note-item" key={note.id}>
+          <span className="phase-2-note-item-label">
+            Commento anonimo {index + 1}
+          </span>
+          <p>{note.body_text}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function PaperPlaneIcon() {
   return (
     <svg
@@ -881,6 +907,9 @@ export function AdminConsultationCommentsManager({
                                     Nessuna descrizione aggiuntiva.
                                   </p>
                                 )}
+                                <AdminPhase2VoteNotes
+                                  notes={comment.phase_2_vote_notes ?? []}
+                                />
                               </>
                             )}
                           </div>

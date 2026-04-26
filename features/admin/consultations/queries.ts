@@ -2,6 +2,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   AdminConsultationCommentEntry,
+  AdminPhase2VoteNoteEntry,
   ConsultationDirectoryEntry,
   ConsultationParticipantEntry,
   DocumentSectionEntry,
@@ -10,6 +11,14 @@ import type {
 type AppError = {
   message: string;
 };
+
+function isMissingRelationError(error: AppError | null, relationName: string) {
+  if (!error?.message) {
+    return false;
+  }
+
+  return error.message.includes(`Could not find the table 'public.${relationName}'`);
+}
 
 export async function getConsultationsDirectory() {
   const supabase = await createServerSupabaseClient();
@@ -149,7 +158,7 @@ export async function getExpertSectionCommentsByConsultationId(
   consultationId: string,
 ) {
   const supabase = createAdminSupabaseClient();
-  const query = supabase
+  const commentsQuery = supabase
     .from("expert_section_comments")
     .select(
       [
@@ -172,13 +181,43 @@ export async function getExpertSectionCommentsByConsultationId(
     data: AdminConsultationCommentEntry[] | null;
     error: AppError | null;
   }>;
-  const { data, error } = await query;
+  const notesQuery = supabase
+    .from("expert_section_comment_vote_notes")
+    .select("id, comment_id, body_text, created_at, updated_at")
+    .eq("consultation_id", consultationId)
+    .order("created_at", { ascending: true })
+    .returns<AdminPhase2VoteNoteEntry[]>() as unknown as Promise<{
+    data: AdminPhase2VoteNoteEntry[] | null;
+    error: AppError | null;
+  }>;
+  const [
+    { data, error },
+    { data: phase2VoteNotes, error: phase2VoteNotesError },
+  ] = await Promise.all([commentsQuery, notesQuery]);
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  if (
+    phase2VoteNotesError &&
+    !isMissingRelationError(phase2VoteNotesError, "expert_section_comment_vote_notes")
+  ) {
+    throw phase2VoteNotesError;
+  }
+
+  const notesByCommentId = new Map<string, AdminPhase2VoteNoteEntry[]>();
+
+  for (const note of phase2VoteNotes ?? []) {
+    const commentNotes = notesByCommentId.get(note.comment_id) ?? [];
+    commentNotes.push(note);
+    notesByCommentId.set(note.comment_id, commentNotes);
+  }
+
+  return (data ?? []).map((comment) => ({
+    ...comment,
+    phase_2_vote_notes: notesByCommentId.get(comment.id) ?? [],
+  }));
 }
 
 export async function getInactiveExpertSectionCommentsByConsultationId(

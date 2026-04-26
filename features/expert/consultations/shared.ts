@@ -12,6 +12,16 @@ export const expertCommentPriorityLevels = ["low", "medium", "high"] as const;
 
 export type ExpertSectionCommentPriority = (typeof expertCommentPriorityLevels)[number];
 
+export const expertPhase2VoteOptions = [
+  { value: 0, label: "Non sono d'accordo" },
+  { value: 1, label: "Parzialmente in disaccordo" },
+  { value: 2, label: "Neutro" },
+  { value: 3, label: "Parzialmente d'accordo" },
+  { value: 4, label: "D'accordo" },
+] as const;
+
+export type ExpertPhase2VoteScore = (typeof expertPhase2VoteOptions)[number]["value"];
+
 export type ExpertSectionCommentEntry = {
   id: string;
   consultation_id: string;
@@ -23,6 +33,25 @@ export type ExpertSectionCommentEntry = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type ExpertPhase2VoteNoteEntry = {
+  id: string;
+  comment_id: string;
+  body_text: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ExpertPhase2VotableCommentEntry = {
+  id: string;
+  consultation_id: string;
+  section_id: string;
+  display_title: string;
+  display_body: string;
+  order_index: number | null;
+  current_vote_score: ExpertPhase2VoteScore | null;
+  current_user_note: ExpertPhase2VoteNoteEntry | null;
 };
 
 export type ExpertConsultationView =
@@ -57,6 +86,10 @@ export function canExpertSubmitSectionComments(state: ConsultationState) {
   return state === "phase_1_open";
 }
 
+export function canExpertVotePhase2(state: ConsultationState) {
+  return state === "phase_2_open";
+}
+
 export function formatExpertCommentPriorityLabel(
   priority: ExpertSectionCommentPriority,
 ) {
@@ -70,6 +103,13 @@ export function formatExpertCommentPriorityLabel(
     default:
       return priority;
   }
+}
+
+export function formatExpertPhase2VoteLabel(score: ExpertPhase2VoteScore) {
+  return (
+    expertPhase2VoteOptions.find((option) => option.value === score)?.label
+    ?? String(score)
+  );
 }
 
 export function getExpertConsultationCardDescription(
@@ -116,8 +156,8 @@ export function getExpertConsultationPageContent(
             : "Votazione commenti conclusa",
         body:
           consultation.current_state === "phase_2_open"
-            ? "Qui costruiremo la pagina in cui l'esperto votera' i commenti consolidati dagli amministratori."
-            : "La votazione e' chiusa. Questa route restera' il punto di accesso alla vista della fase 2 e al riepilogo del voto espresso.",
+            ? "Consulta i commenti consolidati pubblicati per ogni sezione ed esprimi una valutazione da 0 a 4 sul tuo livello di accordo."
+            : "La votazione e' chiusa. Puoi continuare a consultare i commenti pubblicati e rileggere le valutazioni che hai gia' espresso.",
         stateLabel,
       };
     case "completed":

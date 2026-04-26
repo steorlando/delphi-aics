@@ -98,6 +98,15 @@ export type AdminConsultationCommentEntry = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  phase_2_vote_notes?: AdminPhase2VoteNoteEntry[];
+};
+
+export type AdminPhase2VoteNoteEntry = {
+  id: string;
+  comment_id: string;
+  body_text: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export function formatConsultationStateLabel(state: ConsultationState) {

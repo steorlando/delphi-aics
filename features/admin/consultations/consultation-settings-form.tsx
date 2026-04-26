@@ -101,19 +101,19 @@ export function ConsultationSettingsForm({
         </div>
 
         <label className="field">
-          <span>Descrizione consultazione</span>
+          <span>Descrizione documento</span>
           <textarea
-            defaultValue={consultation.description ?? ""}
-            name="description"
+            defaultValue={consultation.document_description ?? ""}
+            name="documentDescription"
             rows={4}
           />
         </label>
 
         <label className="field">
-          <span>Descrizione documento</span>
+          <span>Istruzioni per questa fase</span>
           <textarea
-            defaultValue={consultation.document_description ?? ""}
-            name="documentDescription"
+            defaultValue={consultation.description ?? ""}
+            name="description"
             rows={4}
           />
         </label>

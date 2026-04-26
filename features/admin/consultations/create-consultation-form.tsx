@@ -148,19 +148,19 @@ function CreateConsultationModal({
 
           <div className="two-column-grid">
             <label className="field">
-              <span>Descrizione consultazione</span>
+              <span>Descrizione documento</span>
               <textarea
-                name="description"
-                placeholder="Contesto, obiettivo e note operative per gli amministratori."
+                name="documentDescription"
+                placeholder="Breve descrizione del documento da sottoporre alla consultazione."
                 rows={4}
               />
             </label>
 
             <label className="field">
-              <span>Descrizione documento</span>
+              <span>Istruzioni per questa fase</span>
               <textarea
-                name="documentDescription"
-                placeholder="Breve descrizione del documento da sottoporre alla consultazione."
+                name="description"
+                placeholder="Contesto, obiettivo e note operative per gli amministratori."
                 rows={4}
               />
             </label>
