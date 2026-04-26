@@ -2,6 +2,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   AdminConsultationCommentEntry,
+  AdminPhase2VoteNoteEntry,
   ConsultationDirectoryEntry,
   ConsultationParticipantEntry,
   DocumentSectionEntry,
@@ -34,6 +35,8 @@ type AdminCommentPhase2ReviewLookup = {
   id: string;
   is_phase_2_reviewed: boolean;
 };
+
+type AdminPhase2VoteNoteLookup = AdminPhase2VoteNoteEntry;
 
 function isMissingRelationError(error: AppError | null, relationName: string) {
   if (!error?.message) {
@@ -126,10 +129,43 @@ async function getCommentPhase2ReviewStatusByConsultationId(consultationId: stri
   return new Map((data ?? []).map((comment) => [comment.id, comment.is_phase_2_reviewed]));
 }
 
+async function getCommentVoteNotesByConsultationId(consultationId: string) {
+  const supabase = createAdminSupabaseClient();
+  const query = supabase
+    .from("expert_section_comment_vote_notes")
+    .select("id, comment_id, body_text, created_at, updated_at")
+    .eq("consultation_id", consultationId)
+    .order("created_at", { ascending: true })
+    .returns<AdminPhase2VoteNoteLookup[]>() as unknown as Promise<{
+    data: AdminPhase2VoteNoteLookup[] | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await query;
+
+  if (error) {
+    if (isMissingRelationError(error, "expert_section_comment_vote_notes")) {
+      return new Map<string, AdminPhase2VoteNoteEntry[]>();
+    }
+
+    throw error;
+  }
+
+  const notesByCommentId = new Map<string, AdminPhase2VoteNoteEntry[]>();
+
+  for (const note of data ?? []) {
+    const commentNotes = notesByCommentId.get(note.comment_id) ?? [];
+    commentNotes.push(note);
+    notesByCommentId.set(note.comment_id, commentNotes);
+  }
+
+  return notesByCommentId;
+}
+
 function mapCommentsWithVoteStats(
   comments: AdminConsultationCommentLookup[],
   voteStatsByCommentId: Map<string, { vote_count: number; average_vote_score: number | null }>,
   phase2ReviewStatusByCommentId: Map<string, boolean>,
+  voteNotesByCommentId?: Map<string, AdminPhase2VoteNoteEntry[]>,
 ) {
   return comments.map<AdminConsultationCommentEntry>((comment) => {
     const voteStats = voteStatsByCommentId.get(comment.id);
@@ -139,6 +175,7 @@ function mapCommentsWithVoteStats(
       is_phase_2_reviewed: phase2ReviewStatusByCommentId.get(comment.id) ?? false,
       vote_count: voteStats?.vote_count ?? 0,
       average_vote_score: voteStats?.average_vote_score ?? null,
+      phase_2_vote_notes: voteNotesByCommentId?.get(comment.id) ?? [],
     };
   });
 }
@@ -304,10 +341,16 @@ export async function getExpertSectionCommentsByConsultationId(
     data: AdminConsultationCommentLookup[] | null;
     error: AppError | null;
   }>;
-  const [{ data, error }, voteStatsByCommentId, phase2ReviewStatusByCommentId] = await Promise.all([
+  const [
+    { data, error },
+    voteStatsByCommentId,
+    phase2ReviewStatusByCommentId,
+    voteNotesByCommentId,
+  ] = await Promise.all([
     query,
     getCommentVoteStatsByConsultationId(consultationId),
     getCommentPhase2ReviewStatusByConsultationId(consultationId),
+    getCommentVoteNotesByConsultationId(consultationId),
   ]);
 
   if (error) {
@@ -318,6 +361,7 @@ export async function getExpertSectionCommentsByConsultationId(
     data ?? [],
     voteStatsByCommentId,
     phase2ReviewStatusByCommentId,
+    voteNotesByCommentId,
   );
 }
 

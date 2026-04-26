@@ -122,12 +122,13 @@ export default async function ExpertConsultationPage({
             {canSubmitPhase2Votes ? (
               <p>
                 Puoi selezionare o aggiornare il voto direttamente su ciascun commento
-                finche&apos; la consultazione resta aperta.
+                finche&apos; la consultazione resta aperta. Se vuoi, puoi aggiungere anche
+                un commento anonimo visibile agli amministratori.
               </p>
             ) : (
               <p>
-                In questa fase puoi rileggere i commenti pubblicati e i voti che
-                hai espresso, senza apportare modifiche.
+                In questa fase puoi rileggere i commenti pubblicati, i voti che hai
+                espresso e i tuoi commenti alla votazione, senza apportare modifiche.
               </p>
             )}
           </div>

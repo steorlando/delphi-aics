@@ -3,7 +3,9 @@
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  saveExpertPhase2VoteNoteAction,
   saveExpertPhase2VoteAction,
+  type SaveExpertPhase2VoteNoteFormState,
   type SaveExpertPhase2VoteFormState,
 } from "@/features/expert/consultations/actions";
 import {
@@ -31,6 +33,11 @@ const initialVoteState: SaveExpertPhase2VoteFormState = {
   message: "",
 };
 
+const initialVoteNoteState: SaveExpertPhase2VoteNoteFormState = {
+  status: "idle",
+  message: "",
+};
+
 function getInitialSelectedSectionId(
   sections: ExpertConsultationSectionEntry[],
   votableComments: ExpertPhase2VotableCommentEntry[],
@@ -42,6 +49,98 @@ function getInitialSelectedSectionId(
   return sections.find((section) => sectionIdsWithPublishedComments.has(section.id))?.id
     ?? sections[0]?.id
     ?? "";
+}
+
+function Phase2CurrentUserNote({
+  note,
+}: {
+  note: ExpertPhase2VotableCommentEntry["current_user_note"];
+}) {
+  if (!note) {
+    return null;
+  }
+
+  return (
+    <div className="phase-2-note-list" aria-label="Il tuo commento al voto">
+      <span className="phase-2-note-list-title">Il tuo commento</span>
+      <article className="phase-2-note-item">
+        <p>{note.body_text}</p>
+      </article>
+    </div>
+  );
+}
+
+function Phase2VoteNoteInlineForm({
+  consultationId,
+  onClose,
+  votableComment,
+}: {
+  consultationId: string;
+  onClose: () => void;
+  votableComment: ExpertPhase2VotableCommentEntry;
+}) {
+  const router = useRouter();
+  const [noteText, setNoteText] = useState(
+    votableComment.current_user_note?.body_text ?? "",
+  );
+  const [state, formAction, isPending] = useActionState(
+    saveExpertPhase2VoteNoteAction,
+    initialVoteNoteState,
+  );
+
+  useEffect(() => {
+    setNoteText(votableComment.current_user_note?.body_text ?? "");
+  }, [votableComment.current_user_note?.body_text]);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      onClose();
+      router.refresh();
+    }
+  }, [onClose, router, state.status]);
+
+  return (
+    <form action={formAction} className="auth-form phase-2-note-inline-form">
+      <input name="consultationId" type="hidden" value={consultationId} />
+      <input name="commentId" type="hidden" value={votableComment.id} />
+
+      <label className="field">
+        <span>
+          {votableComment.current_user_note ? "Modifica il tuo commento" : "Il tuo commento"}
+        </span>
+        <textarea
+          autoFocus
+          maxLength={2500}
+          name="bodyText"
+          onChange={(event) => setNoteText(event.target.value)}
+          placeholder="Se vuoi, aggiungi una motivazione o una precisazione sul tuo voto"
+          required
+          value={noteText}
+        />
+      </label>
+
+      <div className="phase-2-note-inline-meta">
+        <span>{noteText.length}/2500 caratteri</span>
+      </div>
+
+      {state.status === "error" && state.message ? (
+        <p className="form-error expert-review-inline-feedback">{state.message}</p>
+      ) : null}
+
+      <div className="compact-form-actions expert-review-form-actions">
+        <button
+          className="secondary-button small-button"
+          onClick={onClose}
+          type="button"
+        >
+          Annulla
+        </button>
+        <button className="primary-button small-button" disabled={isPending} type="submit">
+          {isPending ? "Salvataggio..." : "Salva commento"}
+        </button>
+      </div>
+    </form>
+  );
 }
 
 function Phase2VoteForm({
@@ -129,6 +228,72 @@ function Phase2VoteForm({
         <p className="form-success expert-review-inline-feedback">{state.message}</p>
       ) : null}
     </form>
+  );
+}
+
+function Phase2VotableCommentCard({
+  canSubmitVotes,
+  consultationId,
+  votableComment,
+}: Phase2VoteFormProps) {
+  const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+
+  return (
+    <article
+      className={`expert-review-comment-card expert-review-comment-card-compact phase-2-vote-card${isNoteEditorOpen ? " phase-2-vote-card-editing-note" : ""}`}
+    >
+      <div className="expert-review-comment-row">
+        <div className="admin-consultation-comment-row-copy">
+          <strong className="expert-review-comment-row-title">
+            {votableComment.display_title}
+          </strong>
+        </div>
+      </div>
+
+      <div className="expert-review-comment-details phase-2-vote-card-details">
+        {votableComment.display_body ? (
+          <p className="expert-review-comment-body">
+            {votableComment.display_body}
+          </p>
+        ) : (
+          <p className="muted expert-review-comment-body">
+            Nessuna descrizione aggiuntiva.
+          </p>
+        )}
+
+        <Phase2VoteForm
+          canSubmitVotes={canSubmitVotes}
+          consultationId={consultationId}
+          votableComment={votableComment}
+        />
+
+        <div className="phase-2-vote-card-footer">
+          {canSubmitVotes ? (
+            <button
+              className="phase-2-note-link"
+              onClick={() => setIsNoteEditorOpen((current) => !current)}
+              type="button"
+            >
+              {isNoteEditorOpen
+                ? "Chiudi"
+                : votableComment.current_user_note
+                  ? "Modifica commento"
+                  : "Commenta"}
+            </button>
+          ) : null}
+        </div>
+
+        {isNoteEditorOpen ? (
+          <Phase2VoteNoteInlineForm
+            consultationId={consultationId}
+            onClose={() => setIsNoteEditorOpen(false)}
+            votableComment={votableComment}
+          />
+        ) : (
+          <Phase2CurrentUserNote note={votableComment.current_user_note} />
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -308,36 +473,12 @@ export function ExpertConsultationPhase2Voting({
           {selectedSectionComments.length > 0 ? (
             <div className="expert-review-comment-list expert-review-comment-list-compact">
               {selectedSectionComments.map((comment) => (
-                <article
-                  className="expert-review-comment-card expert-review-comment-card-compact phase-2-vote-card"
+                <Phase2VotableCommentCard
+                  canSubmitVotes={canSubmitVotes}
+                  consultationId={consultationId}
                   key={comment.id}
-                >
-                  <div className="expert-review-comment-row">
-                    <div className="admin-consultation-comment-row-copy">
-                      <strong className="expert-review-comment-row-title">
-                        {comment.display_title}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="expert-review-comment-details phase-2-vote-card-details">
-                    {comment.display_body ? (
-                      <p className="expert-review-comment-body">
-                        {comment.display_body}
-                      </p>
-                    ) : (
-                      <p className="muted expert-review-comment-body">
-                        Nessuna descrizione aggiuntiva.
-                      </p>
-                    )}
-
-                    <Phase2VoteForm
-                      canSubmitVotes={canSubmitVotes}
-                      consultationId={consultationId}
-                      votableComment={comment}
-                    />
-                  </div>
-                </article>
+                  votableComment={comment}
+                />
               ))}
             </div>
           ) : (

@@ -35,6 +35,14 @@ export type ExpertSectionCommentEntry = {
   updated_at: string;
 };
 
+export type ExpertPhase2VoteNoteEntry = {
+  id: string;
+  comment_id: string;
+  body_text: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ExpertPhase2VotableCommentEntry = {
   id: string;
   consultation_id: string;
@@ -43,6 +51,7 @@ export type ExpertPhase2VotableCommentEntry = {
   display_body: string;
   order_index: number | null;
   current_vote_score: ExpertPhase2VoteScore | null;
+  current_user_note: ExpertPhase2VoteNoteEntry | null;
 };
 
 export type ExpertConsultationView =
@@ -142,7 +151,7 @@ export function getExpertConsultationPageContent(
           eyebrow: "Consultazione conclusa",
           title: "Consultazione conclusa",
           body:
-            "La consultazione e' conclusa. Puoi continuare a consultare i commenti pubblicati e i voti che hai espresso, senza modificarli.",
+            "La consultazione e' conclusa. Puoi continuare a consultare i commenti pubblicati, i voti che hai espresso e i tuoi commenti alla votazione, senza modificarli.",
           stateLabel,
         };
       }

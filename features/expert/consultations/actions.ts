@@ -21,6 +21,11 @@ export type SaveExpertPhase2VoteFormState = {
   message: string;
 };
 
+export type SaveExpertPhase2VoteNoteFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
 type AppError = {
   code?: string;
   message: string;
@@ -136,6 +141,28 @@ type Phase2VotesUpdateBuilder = {
           };
         };
       };
+    };
+  };
+};
+
+type Phase2VoteNotesUpsertBuilder = {
+  upsert(
+    values: {
+      consultation_id: string;
+      comment_id: string;
+      author_profile_id: string;
+      body_text: string;
+      updated_at: string;
+    },
+    options: {
+      onConflict: string;
+    },
+  ): {
+    select(columns: string): {
+      maybeSingle<T>(): Promise<{
+        data: T | null;
+        error: AppError | null;
+      }>;
     };
   };
 };
@@ -806,5 +833,165 @@ export async function saveExpertPhase2VoteAction(
   return {
     status: "success",
     message: "Valutazione salvata correttamente.",
+  };
+}
+
+export async function saveExpertPhase2VoteNoteAction(
+  _previousState: SaveExpertPhase2VoteNoteFormState,
+  formData: FormData,
+): Promise<SaveExpertPhase2VoteNoteFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "expert") {
+    return {
+      status: "error",
+      message: "Solo gli esperti autenticati possono commentare i voti.",
+    };
+  }
+
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const commentId = normalizeText(formData.get("commentId"));
+  const bodyText = normalizeText(formData.get("bodyText"));
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  if (!commentId) {
+    return {
+      status: "error",
+      message: "Commento da commentare non valido.",
+    };
+  }
+
+  if (!bodyText) {
+    return {
+      status: "error",
+      message: "Inserisci una nota prima di salvare.",
+    };
+  }
+
+  if (bodyText.length > 2500) {
+    return {
+      status: "error",
+      message: "La nota puo' contenere al massimo 2500 caratteri.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const assignmentQuery = supabase
+    .from("consultation_participants")
+    .select("consultation_id")
+    .eq("consultation_id", consultationId)
+    .eq("profile_id", profile.id)
+    .eq("is_active", true)
+    .maybeSingle<{ consultation_id: string }>() as unknown as Promise<{
+    data: { consultation_id: string } | null;
+    error: AppError | null;
+  }>;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id, current_state, is_active")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string; current_state: ConsultationState; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; current_state: ConsultationState; is_active: boolean } | null;
+    error: AppError | null;
+  }>;
+  const commentQuery = supabase
+    .from("expert_section_comments")
+    .select("id, is_active")
+    .eq("id", commentId)
+    .eq("consultation_id", consultationId)
+    .maybeSingle<{ id: string; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; is_active: boolean } | null;
+    error: AppError | null;
+  }>;
+
+  const [
+    { data: assignment, error: assignmentError },
+    { data: consultation, error: consultationError },
+    { data: comment, error: commentError },
+  ] = await Promise.all([assignmentQuery, consultationQuery, commentQuery]);
+
+  if (assignmentError || !assignment) {
+    return {
+      status: "error",
+      message:
+        assignmentError?.message ||
+        "Non puoi commentare i voti di una consultazione non assegnata.",
+    };
+  }
+
+  if (consultationError || !consultation || !consultation.is_active) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (consultation.current_state !== "phase_2_open") {
+    return {
+      status: "error",
+      message:
+        "I commenti alla votazione sono modificabili solo quando la consultazione e' nella fase Votazione commenti.",
+    };
+  }
+
+  if (commentError || !comment || !comment.is_active) {
+    return {
+      status: "error",
+      message:
+        commentError?.message ||
+        "Il commento selezionato non e' disponibile per la votazione.",
+    };
+  }
+
+  const voteNotesTable = supabase.from(
+    "expert_section_comment_vote_notes",
+  ) as unknown as Phase2VoteNotesUpsertBuilder;
+  const saveQuery = voteNotesTable
+    .upsert(
+      {
+        consultation_id: consultationId,
+        comment_id: commentId,
+        author_profile_id: profile.id,
+        body_text: bodyText,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "comment_id,author_profile_id",
+      },
+    )
+    .select("id")
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await saveQuery;
+
+  if (error || !data) {
+    if (isMissingRelationError(error, "expert_section_comment_vote_notes")) {
+      return {
+        status: "error",
+        message:
+          "La registrazione dei commenti ai voti non e' ancora attiva in questo ambiente. Applica prima la migrazione dedicata alle note di fase 2.",
+      };
+    }
+
+    return {
+      status: "error",
+      message: error?.message || "Impossibile salvare la nota.",
+    };
+  }
+
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
+
+  return {
+    status: "success",
+    message: "Commento salvato correttamente.",
   };
 }

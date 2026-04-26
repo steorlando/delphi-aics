@@ -1608,6 +1608,7 @@ export async function toggleAdminConsultationCommentPhase2ReviewAction(
   if (
     consultation.current_state !== "phase_2_open"
     && consultation.current_state !== "phase_2_closed"
+    && consultation.current_state !== "completed"
   ) {
     return {
       status: "error",

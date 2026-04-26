@@ -40,6 +40,15 @@ type Phase2VoteLookup = {
   score: ExpertPhase2VoteScore;
 };
 
+type Phase2VoteNoteLookup = {
+  id: string;
+  comment_id: string;
+  author_profile_id: string;
+  body_text: string;
+  created_at: string;
+  updated_at: string;
+};
+
 const consultationSelect = [
   "id",
   "title",
@@ -259,12 +268,23 @@ export async function getExpertPhase2VotableComments(
     data: Phase2VoteLookup[] | null;
     error: AppError | null;
   }>;
+  const voteNotesQuery = supabase
+    .from("expert_section_comment_vote_notes")
+    .select("id, comment_id, author_profile_id, body_text, created_at, updated_at")
+    .eq("consultation_id", consultationId)
+    .eq("author_profile_id", profileId)
+    .order("created_at", { ascending: true })
+    .returns<Phase2VoteNoteLookup[]>() as unknown as Promise<{
+    data: Phase2VoteNoteLookup[] | null;
+    error: AppError | null;
+  }>;
 
   const [
     { data: assignment, error: assignmentError },
     { data: phase2Comments, error: phase2CommentsError },
     { data: phase2Votes, error: phase2VotesError },
-  ] = await Promise.all([assignmentQuery, commentsQuery, votesQuery]);
+    { data: phase2VoteNotes, error: phase2VoteNotesError },
+  ] = await Promise.all([assignmentQuery, commentsQuery, votesQuery, voteNotesQuery]);
 
   if (assignmentError) {
     throw assignmentError;
@@ -282,6 +302,13 @@ export async function getExpertPhase2VotableComments(
     throw phase2VotesError;
   }
 
+  if (
+    phase2VoteNotesError &&
+    !isMissingRelationError(phase2VoteNotesError, "expert_section_comment_vote_notes")
+  ) {
+    throw phase2VoteNotesError;
+  }
+
   const comments = phase2Comments ?? [];
 
   if (comments.length === 0) {
@@ -291,14 +318,32 @@ export async function getExpertPhase2VotableComments(
   const currentVoteByItemId = new Map(
     (phase2Votes ?? []).map((vote) => [vote.comment_id, vote.score]),
   );
+  const currentUserNoteByCommentId = new Map<string, Phase2VoteNoteLookup>();
 
-  return comments.map((comment) => ({
-    id: comment.id,
-    consultation_id: comment.consultation_id,
-    section_id: comment.section_id,
-    display_title: comment.title,
-    display_body: comment.body_text ?? "",
-    order_index: null,
-    current_vote_score: currentVoteByItemId.get(comment.id) ?? null,
-  }));
+  for (const note of phase2VoteNotes ?? []) {
+    currentUserNoteByCommentId.set(note.comment_id, note);
+  }
+
+  return comments.map((comment) => {
+    const currentUserNote = currentUserNoteByCommentId.get(comment.id);
+
+    return {
+      id: comment.id,
+      consultation_id: comment.consultation_id,
+      section_id: comment.section_id,
+      display_title: comment.title,
+      display_body: comment.body_text ?? "",
+      order_index: null,
+      current_vote_score: currentVoteByItemId.get(comment.id) ?? null,
+      current_user_note: currentUserNote
+        ? {
+            id: currentUserNote.id,
+            comment_id: comment.id,
+            body_text: currentUserNote.body_text,
+            created_at: currentUserNote.created_at,
+            updated_at: currentUserNote.updated_at,
+          }
+        : null,
+    };
+  });
 }
