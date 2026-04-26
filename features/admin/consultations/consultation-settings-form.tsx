@@ -83,7 +83,7 @@ export function ConsultationSettingsForm({
               ))}
             </select>
             <p className="field-hint">
-              La UI mostra le 4 fasi operative principali. Alcuni stati avanzati
+              La UI mostra le 5 fasi operative principali. Alcuni stati avanzati
               del database restano comunque disponibili internamente.
             </p>
             {isPhaseOneBlocked ? (

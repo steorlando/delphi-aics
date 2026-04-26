@@ -679,6 +679,8 @@ export async function updateConsultationAction(
   revalidatePath("/admin");
   revalidatePath("/admin/consultations");
   revalidatePath(getConsultationDetailPath(consultationId));
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
 
   return {
     status: "success",

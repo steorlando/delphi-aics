@@ -45,6 +45,7 @@ export default async function ExpertConsultationPage({
 
   const pageContent = getExpertConsultationPageContent(consultation);
   const consultationView = getExpertConsultationView(consultation.current_state);
+  const canSubmitPhase2Votes = canExpertVotePhase2(consultation.current_state);
   let sections: ExpertConsultationSectionEntry[] = [];
   let comments: ExpertSectionCommentEntry[] = [];
   let phase2VotableComments: ExpertPhase2VotableCommentEntry[] = [];
@@ -98,7 +99,9 @@ export default async function ExpertConsultationPage({
 
         {consultationView === "phase_2" ? (
           <div className="expert-consultation-detail-block">
-            <strong>Istruzioni per la votazione</strong>
+            <strong>
+              {canSubmitPhase2Votes ? "Istruzioni per la votazione" : "Riepilogo della votazione"}
+            </strong>
             <p>
               In questa fase trovi, per ciascuna sezione del documento, i commenti
               consolidati da valutare. La pagina si apre sulla prima sezione, ma puoi
@@ -116,10 +119,17 @@ export default async function ExpertConsultationPage({
               <li><strong>3</strong>: Parzialmente d&apos;accordo</li>
               <li><strong>4</strong>: D&apos;accordo</li>
             </ul>
-            <p>
-              Puoi selezionare o aggiornare il voto direttamente su ciascun commento
-              finche&apos; la consultazione resta aperta.
-            </p>
+            {canSubmitPhase2Votes ? (
+              <p>
+                Puoi selezionare o aggiornare il voto direttamente su ciascun commento
+                finche&apos; la consultazione resta aperta.
+              </p>
+            ) : (
+              <p>
+                In questa fase puoi rileggere i commenti pubblicati e i voti che
+                hai espresso, senza apportare modifiche.
+              </p>
+            )}
           </div>
         ) : null}
 
@@ -146,7 +156,7 @@ export default async function ExpertConsultationPage({
           />
         ) : consultationView === "phase_2" ? (
           <ExpertConsultationPhase2Voting
-            canSubmitVotes={canExpertVotePhase2(consultation.current_state)}
+            canSubmitVotes={canSubmitPhase2Votes}
             consultationId={consultation.id}
             sections={sections}
             votableComments={phase2VotableComments}

@@ -19,7 +19,7 @@ export const consultationStateLabels: Record<ConsultationState, string> = {
   admin_review: "Accorpamento commenti",
   phase_2_open: "Votazione commenti",
   phase_2_closed: "Votazione chiusa",
-  completed: "Completata",
+  completed: "Consultazione conclusa",
 };
 
 export const primaryConsultationStates = [
@@ -27,6 +27,7 @@ export const primaryConsultationStates = [
   "phase_1_open",
   "admin_review",
   "phase_2_open",
+  "completed",
 ] as const;
 
 export function getConsultationStateSelectOptions(currentState: ConsultationState) {

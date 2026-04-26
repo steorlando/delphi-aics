@@ -48,8 +48,7 @@ export type ExpertPhase2VotableCommentEntry = {
 export type ExpertConsultationView =
   | "locked"
   | "phase_1"
-  | "phase_2"
-  | "completed";
+  | "phase_2";
 
 export function isExpertConsultationAccessible(state: ConsultationState) {
   return state !== "draft";
@@ -65,9 +64,8 @@ export function getExpertConsultationView(state: ConsultationState): ExpertConsu
       return "phase_1";
     case "phase_2_open":
     case "phase_2_closed":
-      return "phase_2";
     case "completed":
-      return "completed";
+      return "phase_2";
     default:
       return "locked";
   }
@@ -139,6 +137,16 @@ export function getExpertConsultationPageContent(
         stateLabel,
       };
     case "phase_2":
+      if (consultation.current_state === "completed") {
+        return {
+          eyebrow: "Consultazione conclusa",
+          title: "Consultazione conclusa",
+          body:
+            "La consultazione e' conclusa. Puoi continuare a consultare i commenti pubblicati e i voti che hai espresso, senza modificarli.",
+          stateLabel,
+        };
+      }
+
       return {
         eyebrow: "Fase 2",
         title:
@@ -149,14 +157,6 @@ export function getExpertConsultationPageContent(
           consultation.current_state === "phase_2_open"
             ? "Consulta i commenti consolidati pubblicati per ogni sezione ed esprimi una valutazione da 0 a 4 sul tuo livello di accordo."
             : "La votazione e' chiusa. Puoi continuare a consultare i commenti pubblicati e rileggere le valutazioni che hai gia' espresso.",
-        stateLabel,
-      };
-    case "completed":
-      return {
-        eyebrow: "Risultati",
-        title: "Consultazione completata",
-        body:
-          "Qui costruiremo la pagina finale con risultati aggregati e riepilogo conclusivo della consultazione.",
         stateLabel,
       };
     case "locked":
