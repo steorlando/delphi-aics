@@ -59,7 +59,7 @@ export default async function ChangePasswordPage({
         </p>
         <ChangePasswordForm
           email={profile.email}
-          isRecoveryMode={isRecoveryMode}
+          shouldCompleteFirstAccess={profile.must_reset_password}
         />
       </section>
     </main>

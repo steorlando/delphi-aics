@@ -14,6 +14,7 @@ import {
   type ExpertPhase2VoteScore,
   type ExpertPhase2VotableCommentEntry,
 } from "@/features/expert/consultations/shared";
+import { getSanitizedDocumentHtml } from "@/lib/html/sanitize";
 
 type ExpertConsultationPhase2VotingProps = {
   canSubmitVotes: boolean;
@@ -461,8 +462,7 @@ export function ExpertConsultationPhase2Voting({
               <div
                 className="document-rendered-content expert-review-document-content"
                 dangerouslySetInnerHTML={{
-                  __html:
-                    selectedSection.body_text ?? "<p class='muted'>Nessun contenuto disponibile.</p>",
+                  __html: getSanitizedDocumentHtml(selectedSection.body_text),
                 }}
               />
             </div>

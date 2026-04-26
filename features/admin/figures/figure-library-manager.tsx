@@ -224,7 +224,7 @@ export function FigureLibraryManager({
                 type="file"
               />
               <p className="field-hint">
-                Formati ammessi: PNG, JPG, WEBP, GIF, SVG. Dimensione massima 8 MB.
+                Formati ammessi: PNG, JPG, WEBP, GIF. Dimensione massima 8 MB.
               </p>
             </label>
 

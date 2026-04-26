@@ -19,17 +19,31 @@ type EmailOtpType =
   | "email_change"
   | "email";
 
+function normalizeText(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function isEmailOtpType(value: string): value is EmailOtpType {
   return emailOtpTypes.has(value as EmailOtpType);
 }
 
+function getSafeNext(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
 export async function GET(request: NextRequest) {
+  return NextResponse.redirect(
+    new URL("/login?error=invite_invalid", request.url),
+  );
+}
+
+export async function POST(request: NextRequest) {
   const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get("code");
-  const tokenHash = requestUrl.searchParams.get("token_hash");
-  const type = requestUrl.searchParams.get("type");
-  const next = requestUrl.searchParams.get("next") ?? "/";
-  const safeNext = next.startsWith("/") ? next : "/";
+  const formData = await request.formData();
+  const code = normalizeText(formData.get("code"));
+  const tokenHash = normalizeText(formData.get("token_hash"));
+  const type = normalizeText(formData.get("type"));
+  const safeNext = getSafeNext(normalizeText(formData.get("next")));
   const redirectUrl = new URL(safeNext, requestUrl.origin);
 
   if (type === "recovery") {
@@ -37,7 +51,6 @@ export async function GET(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(redirectUrl);
-
   const supabase = createServerClient(
     getSupabaseUrl(),
     getSupabaseAnonKey(),

@@ -6,12 +6,12 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 type ChangePasswordFormProps = {
   email: string;
-  isRecoveryMode?: boolean;
+  shouldCompleteFirstAccess?: boolean;
 };
 
 export function ChangePasswordForm({
   email,
-  isRecoveryMode = false,
+  shouldCompleteFirstAccess = false,
 }: ChangePasswordFormProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -40,7 +40,7 @@ export function ChangePasswordForm({
         throw updateError;
       }
 
-      if (!isRecoveryMode) {
+      if (shouldCompleteFirstAccess) {
         const { error: rpcError } = await supabase.rpc(
           "mark_password_reset_complete",
         );

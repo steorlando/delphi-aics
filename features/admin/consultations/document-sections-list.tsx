@@ -14,6 +14,7 @@ import {
   slugifySectionTitle,
   type DocumentSectionEntry,
 } from "@/features/admin/consultations/shared";
+import { getSanitizedDocumentHtml } from "@/lib/html/sanitize";
 
 type DocumentSectionsListProps = {
   availableFigures: StoredFigureEntry[];
@@ -103,7 +104,10 @@ function SectionPreview({
             <div
               className="document-rendered-content"
               dangerouslySetInnerHTML={{
-                __html: section.body_text ?? "<p class='muted'>Nessun contenuto.</p>",
+                __html: getSanitizedDocumentHtml(
+                  section.body_text,
+                  "<p class='muted'>Nessun contenuto.</p>",
+                ),
               }}
             />
           </div>

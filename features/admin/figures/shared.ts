@@ -5,7 +5,6 @@ export const consultationFigureAllowedMimeTypes = [
   "image/jpeg",
   "image/webp",
   "image/gif",
-  "image/svg+xml",
 ] as const;
 
 export const consultationFigureMaxBytes = 8 * 1024 * 1024;

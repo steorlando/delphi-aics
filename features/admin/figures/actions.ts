@@ -107,7 +107,7 @@ export async function uploadConsultationFigureAction(
   if (!consultationFigureAllowedMimeTypes.includes(fileEntry.type as never)) {
     return {
       message:
-        "Formato non supportato. Carica PNG, JPG, WEBP, GIF o SVG.",
+        "Formato non supportato. Carica PNG, JPG, WEBP o GIF.",
       status: "error",
     };
   }

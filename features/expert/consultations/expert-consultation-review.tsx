@@ -14,6 +14,7 @@ import {
   type ExpertConsultationSectionEntry,
   type ExpertSectionCommentEntry,
 } from "@/features/expert/consultations/shared";
+import { getSanitizedDocumentHtml } from "@/lib/html/sanitize";
 
 type ExpertConsultationReviewProps = {
   canSubmitComments: boolean;
@@ -593,8 +594,7 @@ export function ExpertConsultationReview({
               <div
                 className="document-rendered-content expert-review-document-content"
                 dangerouslySetInnerHTML={{
-                  __html:
-                    selectedSection.body_text ?? "<p class='muted'>Nessun contenuto disponibile.</p>",
+                  __html: getSanitizedDocumentHtml(selectedSection.body_text),
                 }}
               />
             </div>
