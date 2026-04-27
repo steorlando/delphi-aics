@@ -54,10 +54,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <AicsLogo className="auth-brand" />
         <span className="eyebrow">Consultazione Delphi</span>
         <h1>Accedi</h1>
-        <p>
-          Esperti e amministratori usano lo stesso accesso. I permessi dipendono
-          dal tuo profilo applicativo e dal ruolo nella consultazione.
-        </p>
 
         {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
 
