@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { buildAuthConfirmUrl } from "@/lib/auth/email-links";
 import { getAuthContext } from "@/lib/auth/session";
+import { sendFirstAccessEmail } from "@/lib/email/smtp";
 import { getAppUrl } from "@/lib/env";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type CreateExpertFormState = {
   status: "idle" | "success" | "error";
@@ -237,19 +238,23 @@ async function inviteExpertAccount(
     "profiles",
   ) as unknown as ProfilesInsertBuilder;
   const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
+  const displayName = `${input.firstName} ${input.lastName}`.trim() || input.email;
 
   const { data: authData, error: authError } =
-    await adminClient.auth.admin.inviteUserByEmail(input.email, {
-      redirectTo,
-      data: {
-        first_name: input.firstName,
-        last_name: input.lastName,
-        institution_name: input.institutionName || null,
-        role: "expert",
+    await adminClient.auth.admin.generateLink({
+      type: "invite",
+      email: input.email,
+      options: {
+        data: {
+          first_name: input.firstName,
+          last_name: input.lastName,
+          institution_name: input.institutionName || null,
+          role: "expert",
+        },
       },
     });
 
-  if (authError || !authData.user) {
+  if (authError || !authData.user || !authData.properties?.hashed_token) {
     return {
       ok: false as const,
       email: input.email,
@@ -281,6 +286,29 @@ async function inviteExpertAccount(
       message:
         profileError?.message ??
         "L'utente di autenticazione e' stato creato, ma non e' stato possibile salvare il profilo applicativo.",
+    };
+  }
+
+  try {
+    await sendFirstAccessEmail({
+      email: input.email,
+      link: buildAuthConfirmUrl({
+        tokenHash: authData.properties.hashed_token,
+        type: authData.properties.verification_type,
+      }),
+      name: displayName,
+    });
+  } catch (error) {
+    await adminClient.from("profiles").delete().eq("id", createdProfile.id);
+    await adminClient.auth.admin.deleteUser(authData.user.id);
+
+    return {
+      ok: false as const,
+      email: input.email,
+      message:
+        error instanceof Error
+          ? error.message
+          : "L'account e' stato creato, ma non e' stato possibile inviare l'email di primo accesso.",
     };
   }
 
@@ -795,7 +823,6 @@ export async function resendExpertInviteAction(
   }
 
   const adminClient = createAdminSupabaseClient();
-  const supabase = await createServerSupabaseClient();
   const profilesTable = adminClient.from(
     "profiles",
   ) as unknown as ProfilesSelectBuilder;
@@ -833,20 +860,37 @@ export async function resendExpertInviteAction(
   }
 
   const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
-  const { error: inviteError } = await supabase.auth.signInWithOtp({
-    email: expert.email,
-    options: {
-      emailRedirectTo: redirectTo,
-      shouldCreateUser: false,
-    },
-  });
+  const { data: linkData, error: inviteError } =
+    await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email: expert.email,
+    });
 
-  if (inviteError) {
+  if (inviteError || !linkData.properties?.hashed_token) {
     return {
       status: "error" as const,
       message:
-        inviteError.message ||
-        "Impossibile reinviare l'email di primo accesso all'esperto.",
+        inviteError?.message ||
+        "Impossibile generare il link di primo accesso all'esperto.",
+    };
+  }
+
+  try {
+    await sendFirstAccessEmail({
+      email: expert.email,
+      link: buildAuthConfirmUrl({
+        tokenHash: linkData.properties.hashed_token,
+        type: linkData.properties.verification_type,
+      }),
+      name: `${expert.first_name} ${expert.last_name}`.trim() || expert.email,
+    });
+  } catch (error) {
+    return {
+      status: "error" as const,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Impossibile inviare l'email di primo accesso all'esperto.",
     };
   }
 
@@ -858,7 +902,7 @@ export async function resendExpertInviteAction(
     metadata: {
       email: expert.email,
       redirect_to: redirectTo,
-      delivery_type: "magiclink",
+      delivery_type: "app_smtp_magiclink",
     },
   });
 

@@ -26,6 +26,12 @@ type CommentModerationNotificationInput = {
   sectionTitle: string;
 };
 
+type AuthLinkEmailInput = {
+  email: string;
+  link: string;
+  name?: string;
+};
+
 let transport: nodemailer.Transporter | undefined;
 
 function getTransport() {
@@ -78,6 +84,73 @@ function formatCommentSnapshotHtml(input: {
   return `<p><strong>Titolo:</strong> ${safeTitle}<br /><strong>Testo:</strong><br />${safeBody}</p>`;
 }
 
+async function sendAppEmail(input: {
+  html: string;
+  subject: string;
+  text: string;
+  to: string;
+}) {
+  await getTransport().sendMail({
+    from: `"${getSmtpFromName()}" <${getSmtpFromEmail()}>`,
+    to: input.to,
+    subject: input.subject,
+    text: input.text,
+    html: input.html,
+  });
+}
+
+export async function sendFirstAccessEmail(input: AuthLinkEmailInput) {
+  const safeName = escapeHtml(input.name?.trim() || input.email);
+  const safeLink = escapeHtml(input.link);
+
+  await sendAppEmail({
+    to: input.email,
+    subject: "[Consultazione Delphi] Completa il primo accesso",
+    text: [
+      `Ciao ${input.name?.trim() || input.email},`,
+      "",
+      "e' stato creato un account per accedere alla piattaforma di consultazione Delphi.",
+      "Apri questo link per confermare l'accesso e impostare la tua password:",
+      input.link,
+      "",
+      "Se non ti aspettavi questa email, puoi ignorarla.",
+    ].join("\n"),
+    html: [
+      `<p>Ciao ${safeName},</p>`,
+      "<p>e' stato creato un account per accedere alla piattaforma di consultazione Delphi.</p>",
+      `<p><a href="${safeLink}">Completa il primo accesso</a></p>`,
+      `<p>Se il pulsante non funziona, copia e incolla questo link nel browser:<br />${safeLink}</p>`,
+      "<p>Se non ti aspettavi questa email, puoi ignorarla.</p>",
+    ].join(""),
+  });
+}
+
+export async function sendPasswordRecoveryEmail(input: AuthLinkEmailInput) {
+  const safeName = escapeHtml(input.name?.trim() || input.email);
+  const safeLink = escapeHtml(input.link);
+
+  await sendAppEmail({
+    to: input.email,
+    subject: "[Consultazione Delphi] Reimposta la password",
+    text: [
+      `Ciao ${input.name?.trim() || input.email},`,
+      "",
+      "abbiamo ricevuto una richiesta di reimpostazione password per la piattaforma di consultazione Delphi.",
+      "Apri questo link per scegliere una nuova password:",
+      input.link,
+      "",
+      "Se non hai richiesto tu il recupero password, puoi ignorare questa email.",
+    ].join("\n"),
+    html: [
+      `<p>Ciao ${safeName},</p>`,
+      "<p>abbiamo ricevuto una richiesta di reimpostazione password per la piattaforma di consultazione Delphi.</p>",
+      `<p><a href="${safeLink}">Reimposta la password</a></p>`,
+      `<p>Se il pulsante non funziona, copia e incolla questo link nel browser:<br />${safeLink}</p>`,
+      "<p>Se non hai richiesto tu il recupero password, puoi ignorare questa email.</p>",
+    ].join(""),
+  });
+}
+
 export async function sendCommentModerationNotification(
   input: CommentModerationNotificationInput,
 ) {
@@ -101,8 +174,7 @@ export async function sendCommentModerationNotification(
     ? formatCommentSnapshotHtml(input.nextComment)
     : null;
 
-  await getTransport().sendMail({
-    from: `"${getSmtpFromName()}" <${getSmtpFromEmail()}>`,
+  await sendAppEmail({
     to: input.recipientEmail,
     subject: `[Consultazione Delphi] ${subject}`,
     text: [

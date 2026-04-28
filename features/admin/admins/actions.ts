@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { buildAuthConfirmUrl } from "@/lib/auth/email-links";
 import { getAuthContext } from "@/lib/auth/session";
+import { sendFirstAccessEmail } from "@/lib/email/smtp";
 import { getAppUrl } from "@/lib/env";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type CreateAdminFormState = {
   status: "idle" | "success" | "error";
@@ -150,19 +151,23 @@ async function inviteAdminAccount(input: {
   const profilesTable = adminClient.from(
     "profiles",
   ) as unknown as ProfilesInsertBuilder;
+  const displayName = `${input.firstName} ${input.lastName}`.trim() || input.email;
 
   const { data: authData, error: authError } =
-    await adminClient.auth.admin.inviteUserByEmail(input.email, {
-      redirectTo: `${getAppUrl()}/auth/confirm?next=/change-password`,
-      data: {
-        first_name: input.firstName,
-        last_name: input.lastName,
-        institution_name: input.institutionName || null,
-        role: "admin",
+    await adminClient.auth.admin.generateLink({
+      type: "invite",
+      email: input.email,
+      options: {
+        data: {
+          first_name: input.firstName,
+          last_name: input.lastName,
+          institution_name: input.institutionName || null,
+          role: "admin",
+        },
       },
     });
 
-  if (authError || !authData.user) {
+  if (authError || !authData.user || !authData.properties?.hashed_token) {
     return {
       ok: false as const,
       message:
@@ -193,6 +198,28 @@ async function inviteAdminAccount(input: {
       message:
         profileError?.message ??
         "L'utente di autenticazione e' stato creato, ma non e' stato possibile salvare il profilo amministrativo.",
+    };
+  }
+
+  try {
+    await sendFirstAccessEmail({
+      email: input.email,
+      link: buildAuthConfirmUrl({
+        tokenHash: authData.properties.hashed_token,
+        type: authData.properties.verification_type,
+      }),
+      name: displayName,
+    });
+  } catch (error) {
+    await adminClient.from("profiles").delete().eq("id", createdProfile.id);
+    await adminClient.auth.admin.deleteUser(authData.user.id);
+
+    return {
+      ok: false as const,
+      message:
+        error instanceof Error
+          ? error.message
+          : "L'account e' stato creato, ma non e' stato possibile inviare l'email di primo accesso.",
     };
   }
 
@@ -545,7 +572,6 @@ export async function resendAdminInviteAction(
   }
 
   const adminClient = createAdminSupabaseClient();
-  const supabase = await createServerSupabaseClient();
   const profilesTable = adminClient.from(
     "profiles",
   ) as unknown as ProfilesSelectBuilder;
@@ -581,20 +607,37 @@ export async function resendAdminInviteAction(
   }
 
   const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
-  const { error: inviteError } = await supabase.auth.signInWithOtp({
-    email: adminProfile.email,
-    options: {
-      emailRedirectTo: redirectTo,
-      shouldCreateUser: false,
-    },
-  });
+  const { data: linkData, error: inviteError } =
+    await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email: adminProfile.email,
+    });
 
-  if (inviteError) {
+  if (inviteError || !linkData.properties?.hashed_token) {
     return {
       status: "error",
       message:
-        inviteError.message ||
-        "Impossibile reinviare l'email di primo accesso all'amministratore.",
+        inviteError?.message ||
+        "Impossibile generare il link di primo accesso per l'amministratore.",
+    };
+  }
+
+  try {
+    await sendFirstAccessEmail({
+      email: adminProfile.email,
+      link: buildAuthConfirmUrl({
+        tokenHash: linkData.properties.hashed_token,
+        type: linkData.properties.verification_type,
+      }),
+      name: adminProfile.email,
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Impossibile inviare l'email di primo accesso all'amministratore.",
     };
   }
 
@@ -606,7 +649,7 @@ export async function resendAdminInviteAction(
     metadata: {
       email: adminProfile.email,
       redirect_to: redirectTo,
-      delivery_type: "magiclink",
+      delivery_type: "app_smtp_magiclink",
     },
   });
 

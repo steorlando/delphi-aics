@@ -2,7 +2,6 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAppUrl } from "@/lib/env";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function LoginForm() {
@@ -58,17 +57,24 @@ export function LoginForm() {
     setSuccessMessage(null);
 
     try {
-      const supabase = createBrowserSupabaseClient();
-      const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        normalizedEmail,
-        {
-          redirectTo,
+      const response = await fetch("/auth/recovery", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          email: normalizedEmail,
+        }),
+      });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+
+        throw new Error(
+          payload?.message || "Impossibile avviare il recupero password.",
+        );
       }
 
       setSuccessMessage(
