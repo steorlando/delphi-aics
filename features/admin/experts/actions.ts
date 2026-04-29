@@ -237,7 +237,6 @@ async function inviteExpertAccount(
   const profilesTable = adminClient.from(
     "profiles",
   ) as unknown as ProfilesInsertBuilder;
-  const redirectTo = `${getAppUrl()}/auth/confirm?next=/change-password`;
   const displayName = `${input.firstName} ${input.lastName}`.trim() || input.email;
 
   const { data: authData, error: authError } =
