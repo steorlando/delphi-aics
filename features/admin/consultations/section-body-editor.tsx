@@ -29,6 +29,9 @@ const toolbarActions: ToolbarAction[] = [
   { label: "Elenco", command: "insertUnorderedList" },
 ];
 
+const unsupportedDocumentMarkupPattern =
+  /<!doctype\b|<\/?(?:html|head|body|meta|title|style)\b/i;
+
 function normalizeEditorHtml(value: string) {
   const trimmed = value.trim();
 
@@ -80,6 +83,7 @@ export function SectionBodyEditor({
   const savedVisualRangeRef = useRef<Range | null>(null);
   const htmlPanelId = useId();
   const visualPanelId = useId();
+  const hasUnsupportedDocumentMarkup = unsupportedDocumentMarkupPattern.test(html);
 
   useEffect(() => {
     const nextValue = initialValue ?? "";
@@ -420,6 +424,14 @@ export function SectionBodyEditor({
               rows={16}
               value={html}
             />
+            {hasUnsupportedDocumentMarkup ? (
+              <p className="form-warning">
+                Hai inserito un documento HTML completo. Al salvataggio verranno
+                mantenuti solo i tag sicuri del contenuto della sezione; doctype,
+                html, head, body, meta, title e style non vengono salvati e non
+                saranno visibili quando riapri la sezione.
+              </p>
+            ) : null}
             <p className="field-hint">
               Modifica direttamente il markup HTML che verra&apos; salvato.
             </p>

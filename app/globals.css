@@ -443,6 +443,16 @@ input {
   font-size: 0.92rem;
 }
 
+.form-warning {
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgba(154, 109, 31, 0.24);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 249, 232, 0.96);
+  color: #7a5414;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .login-form-secondary-actions {
   display: flex;
   justify-content: flex-end;
@@ -1139,6 +1149,63 @@ input {
 
 .document-rendered-content {
   min-width: 0;
+}
+
+.document-rendered-content .documento,
+.wysiwyg-editor .documento {
+  counter-reset: paragrafo;
+}
+
+.document-rendered-content .documento > p,
+.wysiwyg-editor .documento > p {
+  counter-increment: paragrafo;
+}
+
+.document-rendered-content .documento > p::before,
+.wysiwyg-editor .documento > p::before {
+  content: "[" counter(paragrafo) "] ";
+  font-weight: 700;
+}
+
+.document-rendered-content .documento [aria-label="Note"] p::before,
+.document-rendered-content .documento .footnotes p::before,
+.document-rendered-content .documento .footnotes-end-of-document p::before,
+.wysiwyg-editor .documento [aria-label="Note"] p::before,
+.wysiwyg-editor .documento .footnotes p::before,
+.wysiwyg-editor .documento .footnotes-end-of-document p::before {
+  content: "";
+}
+
+.document-rendered-content .documento table,
+.wysiwyg-editor .documento table {
+  width: 100%;
+  margin: 1.1rem 0;
+  border-collapse: collapse;
+}
+
+.document-rendered-content .documento th,
+.document-rendered-content .documento td,
+.wysiwyg-editor .documento th,
+.wysiwyg-editor .documento td {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  vertical-align: top;
+}
+
+.document-rendered-content .documento th,
+.wysiwyg-editor .documento th {
+  background: var(--surface-muted);
+  font-weight: 700;
+}
+
+.document-rendered-content .documento .footnotes,
+.document-rendered-content .documento .footnotes-end-of-document,
+.wysiwyg-editor .documento .footnotes,
+.wysiwyg-editor .documento .footnotes-end-of-document {
+  margin-top: 2rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
 }
 
 .compact-inline-field {
