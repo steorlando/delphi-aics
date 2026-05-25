@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useActionState } from "react";
+import { createPortal } from "react-dom";
 import {
   createConsultationAction,
   type CreateConsultationFormState,
@@ -56,19 +57,22 @@ export function CreateConsultationForm() {
         </button>
       </div>
 
-      {isModalOpen ? (
-        <CreateConsultationModal
-          key={modalInstance}
-          onClose={() => setIsModalOpen(false)}
-          onCreated={(createdConsultationId, message) => {
-            setLastCreatedConsultation({
-              id: createdConsultationId,
-              message,
-            });
-            setIsModalOpen(false);
-          }}
-        />
-      ) : null}
+      {isModalOpen
+        ? createPortal(
+            <CreateConsultationModal
+              key={modalInstance}
+              onClose={() => setIsModalOpen(false)}
+              onCreated={(createdConsultationId, message) => {
+                setLastCreatedConsultation({
+                  id: createdConsultationId,
+                  message,
+                });
+                setIsModalOpen(false);
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </section>
   );
 }
