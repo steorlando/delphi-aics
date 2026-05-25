@@ -31,8 +31,9 @@ const toolbarActions: ToolbarAction[] = [
 
 const unsupportedDocumentMarkupPattern =
   /<!doctype\b|<\/?(?:html|head|body|meta|title|style)\b/i;
-const fullDocumentVisualPlaceholder =
-  '<p class="muted">Documento HTML completo: modifica il sorgente dal tab HTML.</p>';
+const documentBodyPattern = /<body\b[^>]*>([\s\S]*?)<\/body\s*>/i;
+const documentBodyContentPattern =
+  /(<body\b[^>]*>)([\s\S]*?)(<\/body\s*>)/i;
 
 function normalizeEditorHtml(value: string) {
   const trimmed = value.trim();
@@ -42,6 +43,29 @@ function normalizeEditorHtml(value: string) {
   }
 
   return value;
+}
+
+function getVisualEditorHtml(value: string) {
+  const bodyMatch = value.match(documentBodyPattern);
+  const bodyHtml = bodyMatch?.[1]?.trim();
+
+  return bodyHtml || value;
+}
+
+function syncVisualHtmlIntoSource(sourceHtml: string, visualHtml: string) {
+  if (!unsupportedDocumentMarkupPattern.test(sourceHtml)) {
+    return visualHtml;
+  }
+
+  if (!documentBodyContentPattern.test(sourceHtml)) {
+    return visualHtml;
+  }
+
+  return sourceHtml.replace(
+    documentBodyContentPattern,
+    (_match, openBodyTag: string, _bodyContent: string, closeBodyTag: string) =>
+      `${openBodyTag}${visualHtml}${closeBodyTag}`,
+  );
 }
 
 function wrapSelectionWithInlineTag(tagName: "strong") {
@@ -99,9 +123,7 @@ export function SectionBodyEditor({
       return;
     }
 
-    const visualHtml = unsupportedDocumentMarkupPattern.test(html)
-      ? fullDocumentVisualPlaceholder
-      : html;
+    const visualHtml = getVisualEditorHtml(html);
 
     if (editorElement.innerHTML !== visualHtml) {
       editorElement.innerHTML = visualHtml;
@@ -118,17 +140,14 @@ export function SectionBodyEditor({
   }, [activeTab, html]);
 
   function syncFromEditor() {
-    if (hasUnsupportedDocumentMarkup) {
-      return;
-    }
-
     const editorElement = editorRef.current;
 
     if (!editorElement) {
       return;
     }
 
-    setHtml(normalizeEditorHtml(editorElement.innerHTML));
+    const nextVisualHtml = normalizeEditorHtml(editorElement.innerHTML);
+    setHtml((current) => syncVisualHtmlIntoSource(current, nextVisualHtml));
   }
 
   function rememberVisualSelection() {
@@ -437,8 +456,8 @@ export function SectionBodyEditor({
             {hasUnsupportedDocumentMarkup ? (
               <p className="form-warning">
                 Hai inserito un documento HTML completo. Il sorgente viene
-                salvato integralmente; anteprime e viste esperto usano una
-                versione sicura del contenuto del body.
+                salvato integralmente; il WYSIWYG modifica solo il contenuto
+                del body.
               </p>
             ) : null}
             <p className="field-hint">
