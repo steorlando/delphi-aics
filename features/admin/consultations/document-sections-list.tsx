@@ -99,7 +99,7 @@ function SectionPreview({
             </span>
           </div>
 
-          <div className="csv-example">
+          <div className="csv-example document-preview-box">
             <strong>Anteprima HTML</strong>
             <div
               className="document-rendered-content"

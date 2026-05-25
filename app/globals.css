@@ -1147,8 +1147,13 @@ input {
   background: var(--surface-muted);
 }
 
+.document-preview-box {
+  background: #ffffff;
+}
+
 .document-rendered-content {
   min-width: 0;
+  background: #ffffff;
 }
 
 .document-rendered-content .documento,
@@ -2011,7 +2016,7 @@ input {
   padding: clamp(1.2rem, 2vw, 1.8rem);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.78);
+  background: #ffffff;
 }
 
 .expert-review-document-content {
