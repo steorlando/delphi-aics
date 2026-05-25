@@ -31,11 +31,8 @@ const toolbarActions: ToolbarAction[] = [
 
 const unsupportedDocumentMarkupPattern =
   /<!doctype\b|<\/?(?:html|head|body|meta|title|style)\b/i;
-const documentBodyPattern = /<body\b[^>]*>([\s\S]*?)<\/body\s*>/i;
-const documentHeadPattern = /<head\b[^>]*>[\s\S]*?<\/head\s*>/i;
-const doctypePattern = /<!doctype[^>]*>/i;
-const documentClassPattern =
-  /\bclass\s*=\s*(?:"[^"]*\bdocumento\b[^"]*"|'[^']*\bdocumento\b[^']*')/i;
+const fullDocumentVisualPlaceholder =
+  '<p class="muted">Documento HTML completo: modifica il sorgente dal tab HTML.</p>';
 
 function normalizeEditorHtml(value: string) {
   const trimmed = value.trim();
@@ -45,39 +42,6 @@ function normalizeEditorHtml(value: string) {
   }
 
   return value;
-}
-
-function getSectionHtmlForStorage(value: string) {
-  if (!unsupportedDocumentMarkupPattern.test(value)) {
-    return value;
-  }
-
-  const bodyMatch = value.match(documentBodyPattern);
-  const bodyHtml = bodyMatch?.[1]?.trim();
-
-  if (bodyHtml) {
-    return ensureDocumentClassWrapper(bodyHtml);
-  }
-
-  const fragmentHtml = value
-    .replace(doctypePattern, "")
-    .replace(documentHeadPattern, "")
-    .replace(/<\/?(?:html|body)\b[^>]*>/gi, "")
-    .trim();
-
-  return ensureDocumentClassWrapper(fragmentHtml);
-}
-
-function getConvertedSectionHtml(value: string) {
-  return getSectionHtmlForStorage(value);
-}
-
-function ensureDocumentClassWrapper(value: string) {
-  if (!value || documentClassPattern.test(value)) {
-    return value;
-  }
-
-  return `<section class="documento">${value}</section>`;
 }
 
 function wrapSelectionWithInlineTag(tagName: "strong") {
@@ -122,7 +86,6 @@ export function SectionBodyEditor({
   const htmlPanelId = useId();
   const visualPanelId = useId();
   const hasUnsupportedDocumentMarkup = unsupportedDocumentMarkupPattern.test(html);
-  const htmlForStorage = getSectionHtmlForStorage(html);
 
   useEffect(() => {
     const nextValue = initialValue ?? "";
@@ -136,8 +99,12 @@ export function SectionBodyEditor({
       return;
     }
 
-    if (editorElement.innerHTML !== html) {
-      editorElement.innerHTML = html;
+    const visualHtml = unsupportedDocumentMarkupPattern.test(html)
+      ? fullDocumentVisualPlaceholder
+      : html;
+
+    if (editorElement.innerHTML !== visualHtml) {
+      editorElement.innerHTML = visualHtml;
     }
   }, [html]);
 
@@ -151,6 +118,10 @@ export function SectionBodyEditor({
   }, [activeTab, html]);
 
   function syncFromEditor() {
+    if (hasUnsupportedDocumentMarkup) {
+      return;
+    }
+
     const editorElement = editorRef.current;
 
     if (!editorElement) {
@@ -338,16 +309,6 @@ export function SectionBodyEditor({
     setActiveFootnoteNumber(null);
   }
 
-  function convertFullDocumentHtml() {
-    const convertedHtml = getConvertedSectionHtml(html);
-
-    setHtml(convertedHtml);
-
-    window.setTimeout(() => {
-      htmlTextareaRef.current?.focus();
-    }, 0);
-  }
-
   const activeFootnoteText = activeFootnoteNumber
     ? getFootnoteText(html, activeFootnoteNumber)
     : "";
@@ -355,7 +316,7 @@ export function SectionBodyEditor({
   return (
     <div className="field">
       <span>Contenuto sezione</span>
-      <input name={inputName} type="hidden" value={htmlForStorage} />
+      <input name={inputName} type="hidden" value={html} />
       <p className="field-hint">
         Per inserire immagini, caricale prima nella{" "}
         <Link href="/admin/figures" rel="noreferrer" target="_blank">
@@ -475,20 +436,10 @@ export function SectionBodyEditor({
             />
             {hasUnsupportedDocumentMarkup ? (
               <p className="form-warning">
-                Hai inserito un documento HTML completo. Al salvataggio viene
-                usato automaticamente solo il contenuto del body; il CSS del
-                modello viene applicato dagli stili dell&apos;app alla classe
-                documento.
+                Hai inserito un documento HTML completo. Il sorgente viene
+                salvato integralmente; anteprime e viste esperto usano una
+                versione sicura del contenuto del body.
               </p>
-            ) : null}
-            {hasUnsupportedDocumentMarkup ? (
-              <button
-                className="secondary-button small-button"
-                onClick={convertFullDocumentHtml}
-                type="button"
-              >
-                Converti in sezione
-              </button>
             ) : null}
             <p className="field-hint">
               Modifica direttamente il markup HTML che verra&apos; salvato.

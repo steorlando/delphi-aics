@@ -13,7 +13,6 @@ import {
 import { sendCommentModerationNotification } from "@/lib/email/smtp";
 import { hasSmtpNotificationEnv } from "@/lib/env";
 import { getAuthContext } from "@/lib/auth/session";
-import { sanitizeDocumentHtml } from "@/lib/html/sanitize";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -912,9 +911,7 @@ export async function createDocumentSectionAction(
   const providedSlug = normalizeText(formData.get("slug"));
   const orderIndex = normalizePositiveInteger(formData.get("orderIndex"));
   const referenceLabel = normalizeOptionalText(formData.get("referenceLabel"));
-  const bodyText = sanitizeDocumentHtml(
-    normalizeOptionalText(formData.get("bodyText")),
-  );
+  const bodyText = normalizeOptionalText(formData.get("bodyText"));
   const isActive = normalizeBooleanValue(formData.get("isActive"));
   const slug = providedSlug || slugifySectionTitle(title);
 
@@ -1023,9 +1020,7 @@ export async function updateDocumentSectionAction(
   const providedSlug = normalizeText(formData.get("slug"));
   const orderIndex = normalizePositiveInteger(formData.get("orderIndex"));
   const referenceLabel = normalizeOptionalText(formData.get("referenceLabel"));
-  const bodyText = sanitizeDocumentHtml(
-    normalizeOptionalText(formData.get("bodyText")),
-  );
+  const bodyText = normalizeOptionalText(formData.get("bodyText"));
   const isActive = normalizeBooleanValue(formData.get("isActive"));
   const slug = providedSlug || slugifySectionTitle(title);
 

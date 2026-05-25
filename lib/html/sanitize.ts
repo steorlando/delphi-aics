@@ -59,6 +59,12 @@ const dangerousElementPattern = new RegExp(
   "gi",
 );
 const commentPattern = /<!--[\s\S]*?-->/g;
+const documentBodyPattern = /<body\b[^>]*>([\s\S]*?)<\/body\s*>/i;
+const documentBodyOpenPattern = /<body\b[^>]*>([\s\S]*)/i;
+const documentHeadPattern = /<head\b[^>]*>[\s\S]*?<\/head\s*>/i;
+const documentShellPattern =
+  /<!doctype\b|<\/?(?:html|head|body|meta|title|style)\b/i;
+const doctypePattern = /<!doctype[^>]*>/i;
 const eventHandlerAttributePattern =
   /\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
 const forbiddenAttributePattern =
@@ -75,7 +81,13 @@ export function sanitizeDocumentHtml(value: string | null | undefined) {
     return null;
   }
 
-  const sanitized = value
+  const renderableValue = getRenderableDocumentSource(value);
+
+  if (!renderableValue.trim()) {
+    return null;
+  }
+
+  const sanitized = renderableValue
     .replace(commentPattern, "")
     .replace(dangerousElementPattern, "")
     .replace(tagPattern, (tag, elementName: string) => {
@@ -106,6 +118,31 @@ export function sanitizeDocumentHtml(value: string | null | undefined) {
     .trim();
 
   return sanitized || null;
+}
+
+function getRenderableDocumentSource(value: string) {
+  const closedBodyMatch = value.match(documentBodyPattern);
+  const closedBodyHtml = closedBodyMatch?.[1]?.trim();
+
+  if (closedBodyHtml) {
+    return closedBodyHtml;
+  }
+
+  const openBodyMatch = value.match(documentBodyOpenPattern);
+  const openBodyHtml = openBodyMatch?.[1]?.replace(/<\/html\s*>/gi, "").trim();
+
+  if (openBodyHtml) {
+    return openBodyHtml;
+  }
+
+  if (!documentShellPattern.test(value)) {
+    return value;
+  }
+
+  return value
+    .replace(doctypePattern, "")
+    .replace(documentHeadPattern, "")
+    .replace(/<\/?(?:html|body)\b[^>]*>/gi, "");
 }
 
 export function getSanitizedDocumentHtml(
