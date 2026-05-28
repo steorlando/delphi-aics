@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ConsultationDocumentLink } from "@/components/consultation-document-link";
 import { ConsultationSettingsForm } from "@/features/admin/consultations/consultation-settings-form";
 import {
   formatConsultationStateLabel,
@@ -37,6 +38,7 @@ export function ConsultationDetailPanel({
         </div>
 
         <div className="consultation-detail-panel-actions">
+          <ConsultationDocumentLink consultationId={consultation.id} />
           <Link className="secondary-button small-button" href="/admin/consultations">
             Torna all&apos;elenco consultazioni
           </Link>

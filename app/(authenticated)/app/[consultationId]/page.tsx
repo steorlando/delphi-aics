@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ConsultationDocumentLink } from "@/components/consultation-document-link";
 import {
   formatConsultationStateLabel,
 } from "@/features/admin/consultations/shared";
@@ -81,6 +82,7 @@ export default async function ExpertConsultationPage({
           </div>
 
           <div className="consultation-detail-panel-actions">
+            <ConsultationDocumentLink consultationId={consultation.id} />
             <Link className="secondary-button small-button" href="/app">
               Torna all&apos;elenco consultazioni
             </Link>

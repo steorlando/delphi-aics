@@ -708,6 +708,60 @@ input {
   align-items: center;
 }
 
+.document-export-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.document-export-info {
+  position: relative;
+}
+
+.document-export-info summary {
+  width: 2.15rem;
+  height: 2.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1;
+  list-style: none;
+}
+
+.document-export-info summary::-webkit-details-marker {
+  display: none;
+}
+
+.document-export-info summary:hover,
+.document-export-info summary:focus-visible {
+  border-color: rgba(67, 98, 127, 0.24);
+  background: rgba(67, 98, 127, 0.08);
+}
+
+.document-export-info p {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: min(18rem, calc(100vw - 2rem));
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .consultation-detail-panel-toggle {
   flex: 0 0 auto;
   min-width: 2.25rem;
@@ -2063,6 +2117,160 @@ input {
   background: rgba(139, 97, 41, 0.08);
 }
 
+.print-document-page {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 3rem 1.25rem;
+  background: #eceff3;
+}
+
+.print-document {
+  width: min(100%, 48rem);
+  margin: 0 auto;
+  padding: 3rem;
+  background: #ffffff;
+  box-shadow: 0 16px 44px rgba(31, 41, 55, 0.12);
+  color: #1f2937;
+}
+
+.print-document-cover {
+  display: grid;
+  gap: 0.9rem;
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #d8dee6;
+}
+
+.print-document-kicker,
+.print-document-reference {
+  color: #657386;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.print-document-cover h1 {
+  max-width: 40rem;
+  color: #111827;
+  font-size: 2.1rem;
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.print-document-cover p:not(.print-document-kicker) {
+  max-width: 42rem;
+  color: #4b5563;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.print-document-section {
+  break-inside: auto;
+  page-break-inside: auto;
+  margin-top: 2.2rem;
+}
+
+.print-document-section-header {
+  break-after: avoid;
+  page-break-after: avoid;
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.print-document-section-header h2 {
+  color: #111827;
+  font-size: 1.55rem;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.print-document-content {
+  color: #1f2937;
+  font-size: 0.98rem;
+  line-height: 1.68;
+}
+
+.print-document-content h1,
+.print-document-content h2,
+.print-document-content h3,
+.print-document-content h4,
+.print-document-content h5,
+.print-document-content h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+  margin: 1.35rem 0 0.65rem;
+  color: #111827;
+  font-size: 1.12rem;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.print-document-content p,
+.print-document-content ul,
+.print-document-content ol,
+.print-document-content blockquote,
+.print-document-content table,
+.print-document-content figure {
+  margin: 0 0 0.95rem;
+}
+
+.print-document-content ul,
+.print-document-content ol {
+  padding-left: 1.35rem;
+}
+
+.print-document-content li {
+  margin-bottom: 0.35rem;
+}
+
+.print-document-content blockquote {
+  padding: 0.15rem 0 0.15rem 0.85rem;
+  border-left: 3px solid #cbd5e1;
+  color: #4b5563;
+}
+
+.print-document-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.print-document-content th,
+.print-document-content td {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #d8dee6;
+  vertical-align: top;
+}
+
+.print-document-content th {
+  background: #f3f5f8;
+  font-weight: 700;
+}
+
+.print-document-content figure {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.print-document-content img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 18rem;
+  height: auto;
+  margin: 0.35rem auto 0.75rem;
+}
+
+.print-document-content figcaption {
+  color: #657386;
+  font-size: 0.86rem;
+  text-align: center;
+}
+
 .expert-review-comment-list {
   max-height: 24rem;
   overflow-y: auto;
@@ -2792,5 +3000,41 @@ input {
   .data-table th,
   .data-table td {
     padding: 0.8rem 0.75rem;
+  }
+}
+
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  body::before {
+    display: none;
+  }
+
+  .print-document-page {
+    min-height: auto;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .print-document {
+    width: 100%;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .print-document-cover {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-document-section {
+    margin-top: 1.5rem;
   }
 }
