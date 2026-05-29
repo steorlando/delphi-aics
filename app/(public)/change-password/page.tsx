@@ -57,10 +57,7 @@ export default async function ChangePasswordPage({
             ? "Scegli una nuova password per tornare ad accedere alla piattaforma."
             : "Completa il flusso di invito scegliendo la tua password personale prima di poter accedere allo spazio di consultazione."}
         </p>
-        <ChangePasswordForm
-          email={profile.email}
-          shouldCompleteFirstAccess={profile.must_reset_password}
-        />
+        <ChangePasswordForm email={profile.email} />
       </section>
     </main>
   );

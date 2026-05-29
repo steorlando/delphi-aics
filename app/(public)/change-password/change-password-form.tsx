@@ -2,17 +2,13 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { updateCurrentUserPassword } from "./actions";
 
 type ChangePasswordFormProps = {
   email: string;
-  shouldCompleteFirstAccess?: boolean;
 };
 
-export function ChangePasswordForm({
-  email,
-  shouldCompleteFirstAccess = false,
-}: ChangePasswordFormProps) {
+export function ChangePasswordForm({ email }: ChangePasswordFormProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,23 +27,14 @@ export function ChangePasswordForm({
     setErrorMessage(null);
 
     try {
-      const supabase = createBrowserSupabaseClient();
-      const { error: updateError } = await supabase.auth.updateUser({
+      const result = await updateCurrentUserPassword(
         password,
-      });
+        confirmPassword,
+      );
 
-      if (updateError) {
-        throw updateError;
-      }
-
-      if (shouldCompleteFirstAccess) {
-        const { error: rpcError } = await supabase.rpc(
-          "mark_password_reset_complete",
-        );
-
-        if (rpcError) {
-          throw rpcError;
-        }
+      if (result.status === "error") {
+        setErrorMessage(result.message ?? "Impossibile aggiornare la password.");
+        return;
       }
 
       router.replace("/");
