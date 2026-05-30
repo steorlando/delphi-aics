@@ -38,6 +38,11 @@ type AdminCommentPhase2ReviewLookup = {
 
 type AdminPhase2VoteNoteLookup = AdminPhase2VoteNoteEntry;
 
+type ConsultationCommentSummaryLookup = {
+  consultation_id: string;
+  created_at: string;
+};
+
 function isMissingRelationError(error: AppError | null, relationName: string) {
   if (!error?.message) {
     return false;
@@ -61,6 +66,46 @@ function isMissingColumnError(
 
 function roundVoteAverage(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+async function getCommentSummariesByConsultationId() {
+  const supabase = createAdminSupabaseClient();
+  const query = supabase
+    .from("expert_section_comments")
+    .select("consultation_id, created_at")
+    .returns<ConsultationCommentSummaryLookup[]>() as unknown as Promise<{
+    data: ConsultationCommentSummaryLookup[] | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await query;
+
+  if (error) {
+    if (isMissingRelationError(error, "expert_section_comments")) {
+      return new Map<string, { comment_count: number; latest_comment_created_at: string | null }>();
+    }
+
+    throw error;
+  }
+
+  return (data ?? []).reduce<
+    Map<string, { comment_count: number; latest_comment_created_at: string | null }>
+  >((map, comment) => {
+    const current = map.get(comment.consultation_id) ?? {
+      comment_count: 0,
+      latest_comment_created_at: null,
+    };
+    current.comment_count += 1;
+
+    if (
+      !current.latest_comment_created_at
+      || comment.created_at > current.latest_comment_created_at
+    ) {
+      current.latest_comment_created_at = comment.created_at;
+    }
+
+    map.set(comment.consultation_id, current);
+    return map;
+  }, new Map<string, { comment_count: number; latest_comment_created_at: string | null }>());
 }
 
 async function getCommentVoteStatsByConsultationId(consultationId: string) {
@@ -206,13 +251,24 @@ export async function getConsultationsDirectory() {
     data: ConsultationDirectoryEntry[] | null;
     error: AppError | null;
   }>;
-  const { data, error } = await query;
+  const [{ data, error }, commentSummariesByConsultationId] = await Promise.all([
+    query,
+    getCommentSummariesByConsultationId(),
+  ]);
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map((consultation) => {
+    const commentSummary = commentSummariesByConsultationId.get(consultation.id);
+
+    return {
+      ...consultation,
+      comment_count: commentSummary?.comment_count ?? 0,
+      latest_comment_created_at: commentSummary?.latest_comment_created_at ?? null,
+    };
+  });
 }
 
 export async function getConsultationById(consultationId: string) {
@@ -247,7 +303,15 @@ export async function getConsultationById(consultationId: string) {
     throw error;
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  return {
+    ...data,
+    comment_count: 0,
+    latest_comment_created_at: null,
+  };
 }
 
 export async function getDocumentSectionsByConsultationId(consultationId: string) {

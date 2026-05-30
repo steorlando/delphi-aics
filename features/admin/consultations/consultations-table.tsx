@@ -29,6 +29,16 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 function TrashIcon() {
   return (
     <svg
@@ -118,6 +128,8 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
             <th scope="col">Consultazione</th>
             <th scope="col">Stato</th>
             <th scope="col">Documento</th>
+            <th scope="col">Commenti</th>
+            <th scope="col">Ultimo commento</th>
             <th scope="col">Aggiornata</th>
             <th scope="col">Azioni</th>
           </tr>
@@ -127,10 +139,18 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
             <tr key={consultation.id}>
               <td>
                 <strong>{consultation.title}</strong>
-                {consultation.description ? <p>{consultation.description}</p> : null}
               </td>
               <td>{formatConsultationStateLabel(consultation.current_state)}</td>
               <td>{consultation.document_title || "Documento non ancora indicato"}</td>
+              <td>
+                {consultation.comment_count}{" "}
+                {consultation.comment_count === 1 ? "commento" : "commenti"}
+              </td>
+              <td>
+                {consultation.latest_comment_created_at
+                  ? formatDateTime(consultation.latest_comment_created_at)
+                  : "Nessun commento"}
+              </td>
               <td>{formatDate(consultation.updated_at)}</td>
               <td>
                 <div className="table-action-stack">

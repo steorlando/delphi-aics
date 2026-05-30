@@ -64,6 +64,8 @@ export type ConsultationDirectoryEntry = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  comment_count: number;
+  latest_comment_created_at: string | null;
 };
 
 export type DocumentSectionEntry = {
