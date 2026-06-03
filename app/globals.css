@@ -1494,6 +1494,13 @@ input {
   margin-top: 0.25rem;
 }
 
+.table-results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
 .data-table {
   width: 100%;
   border-collapse: separate;

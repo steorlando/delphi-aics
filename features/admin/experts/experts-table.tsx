@@ -78,6 +78,18 @@ function getStatusFilterValue(expert: ExpertDirectoryEntry) {
   return "active";
 }
 
+function getStatusLabel(expert: ExpertDirectoryEntry) {
+  if (!expert.is_active) {
+    return "Inattivo";
+  }
+
+  if (expert.must_reset_password) {
+    return "Cambio password in attesa";
+  }
+
+  return "Attivo";
+}
+
 function getStatusSortRank(expert: ExpertDirectoryEntry) {
   if (!expert.is_active) {
     return 0;
@@ -102,6 +114,67 @@ function getSortIndicator(
   return sortDirection === "asc" ? "↑" : "↓";
 }
 
+function escapeCsvValue(value: string | number | boolean | null | undefined) {
+  const serializedValue = value == null ? "" : String(value);
+
+  if (!/[",\n\r]/.test(serializedValue)) {
+    return serializedValue;
+  }
+
+  return `"${serializedValue.replace(/"/g, '""')}"`;
+}
+
+function formatCsvDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toISOString();
+}
+
+function downloadExpertsCsv(experts: ExpertDirectoryEntry[]) {
+  const headers = [
+    "Nome",
+    "Cognome",
+    "Nome completo",
+    "Istituzione",
+    "Email",
+    "Stato",
+    "Attivo",
+    "Cambio password richiesto",
+    "Creato il",
+  ];
+  const rows = experts.map((expert) => [
+    expert.first_name,
+    expert.last_name,
+    getExpertName(expert),
+    expert.institution_name || "",
+    expert.email,
+    getStatusLabel(expert),
+    expert.is_active ? "Si" : "No",
+    expert.must_reset_password ? "Si" : "No",
+    formatCsvDate(expert.created_at),
+  ]);
+  const csvContent = [headers, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+  const blob = new Blob([`\uFEFF${csvContent}`], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const today = new Date().toISOString().slice(0, 10);
+
+  link.href = url;
+  link.download = `esperti-filtrati-${today}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function EditIcon() {
   return (
     <svg
@@ -113,6 +186,26 @@ function EditIcon() {
     >
       <path
         d="m15.232 5.232 3.536 3.536M7.5 18.5l3.318-.664a2.25 2.25 0 0 0 1.146-.614l7.36-7.36a1.5 1.5 0 0 0 0-2.122l-2.064-2.064a1.5 1.5 0 0 0-2.121 0l-7.36 7.36a2.25 2.25 0 0 0-.615 1.146L6.5 17.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="14"
+      viewBox="0 0 24 24"
+      width="14"
+    >
+      <path
+        d="M12 3.75v10.5m0 0 3.75-3.75M12 14.25 8.25 10.5M4.5 16.5v2.25A1.5 1.5 0 0 0 6 20.25h12a1.5 1.5 0 0 0 1.5-1.5V16.5"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -310,21 +403,32 @@ export function ExpertsTable({ experts }: ExpertsTableProps) {
           Visualizzati <strong>{filteredExperts.length}</strong> di{" "}
           <strong>{experts.length}</strong> esperti.
         </p>
-        {hasActiveFilters ? (
+        <div className="table-results-actions">
           <button
             className="secondary-button small-button"
-            onClick={() => {
-              setNameFilter("");
-              setInstitutionFilter("");
-              setEmailFilter("");
-              setStatusFilter("");
-              setCreatedAtFilter("");
-            }}
+            disabled={filteredExperts.length === 0}
+            onClick={() => downloadExpertsCsv(filteredExperts)}
             type="button"
           >
-            Azzera filtri
+            <DownloadIcon />
+            Scarica CSV
           </button>
-        ) : null}
+          {hasActiveFilters ? (
+            <button
+              className="secondary-button small-button"
+              onClick={() => {
+                setNameFilter("");
+                setInstitutionFilter("");
+                setEmailFilter("");
+                setStatusFilter("");
+                setCreatedAtFilter("");
+              }}
+              type="button"
+            >
+              Azzera filtri
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="table-wrap">
