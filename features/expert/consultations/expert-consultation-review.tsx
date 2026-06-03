@@ -181,7 +181,7 @@ function SectionCommentComposer({
       setPriority("medium");
       router.refresh();
     }
-  }, [router, state.status]);
+  }, [router, state]);
 
   return (
     <div className="expert-review-composer">
