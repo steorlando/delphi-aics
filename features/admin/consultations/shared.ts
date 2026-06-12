@@ -65,6 +65,9 @@ export type ConsultationDirectoryEntry = {
   created_at: string;
   updated_at: string;
   comment_count: number;
+  invited_expert_count: number;
+  first_access_expert_count: number;
+  commenting_expert_count: number;
   latest_comment_created_at: string | null;
 };
 

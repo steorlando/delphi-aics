@@ -40,7 +40,19 @@ type AdminPhase2VoteNoteLookup = AdminPhase2VoteNoteEntry;
 
 type ConsultationCommentSummaryLookup = {
   consultation_id: string;
+  expert_profile_id: string;
   created_at: string;
+};
+
+type ConsultationParticipantSummaryLookup = {
+  consultation_id: string;
+  profile_id: string;
+  is_active: boolean;
+};
+
+type ConsultationParticipantProfileLookup = {
+  id: string;
+  must_reset_password: boolean;
 };
 
 function isMissingRelationError(error: AppError | null, relationName: string) {
@@ -72,7 +84,7 @@ async function getCommentSummariesByConsultationId() {
   const supabase = createAdminSupabaseClient();
   const query = supabase
     .from("expert_section_comments")
-    .select("consultation_id, created_at")
+    .select("consultation_id, expert_profile_id, created_at")
     .returns<ConsultationCommentSummaryLookup[]>() as unknown as Promise<{
     data: ConsultationCommentSummaryLookup[] | null;
     error: AppError | null;
@@ -81,20 +93,39 @@ async function getCommentSummariesByConsultationId() {
 
   if (error) {
     if (isMissingRelationError(error, "expert_section_comments")) {
-      return new Map<string, { comment_count: number; latest_comment_created_at: string | null }>();
+      return new Map<
+        string,
+        {
+          comment_count: number;
+          commenting_expert_count: number;
+          latest_comment_created_at: string | null;
+        }
+      >();
     }
 
     throw error;
   }
 
   return (data ?? []).reduce<
-    Map<string, { comment_count: number; latest_comment_created_at: string | null }>
+    Map<
+      string,
+      {
+        comment_count: number;
+        commenting_expert_ids: Set<string>;
+        commenting_expert_count: number;
+        latest_comment_created_at: string | null;
+      }
+    >
   >((map, comment) => {
     const current = map.get(comment.consultation_id) ?? {
       comment_count: 0,
+      commenting_expert_ids: new Set<string>(),
+      commenting_expert_count: 0,
       latest_comment_created_at: null,
     };
     current.comment_count += 1;
+    current.commenting_expert_ids.add(comment.expert_profile_id);
+    current.commenting_expert_count = current.commenting_expert_ids.size;
 
     if (
       !current.latest_comment_created_at
@@ -105,7 +136,87 @@ async function getCommentSummariesByConsultationId() {
 
     map.set(comment.consultation_id, current);
     return map;
-  }, new Map<string, { comment_count: number; latest_comment_created_at: string | null }>());
+  }, new Map());
+}
+
+async function getParticipantSummariesByConsultationId() {
+  const supabase = createAdminSupabaseClient();
+  const participantsQuery = supabase
+    .from("consultation_participants")
+    .select("consultation_id, profile_id, is_active")
+    .eq("is_active", true)
+    .returns<ConsultationParticipantSummaryLookup[]>() as unknown as Promise<{
+    data: ConsultationParticipantSummaryLookup[] | null;
+    error: AppError | null;
+  }>;
+  const { data: participants, error: participantsError } = await participantsQuery;
+
+  if (participantsError) {
+    throw participantsError;
+  }
+
+  const profileIds = Array.from(
+    new Set((participants ?? []).map((participant) => participant.profile_id)),
+  );
+
+  const profilesById = new Map<string, ConsultationParticipantProfileLookup>();
+
+  if (profileIds.length > 0) {
+    const profilesQuery = supabase
+      .from("profiles")
+      .select("id, must_reset_password")
+      .in("id", profileIds)
+      .eq("role", "expert")
+      .returns<ConsultationParticipantProfileLookup[]>() as unknown as Promise<{
+      data: ConsultationParticipantProfileLookup[] | null;
+      error: AppError | null;
+    }>;
+    const { data: profiles, error: profilesError } = await profilesQuery;
+
+    if (profilesError) {
+      throw profilesError;
+    }
+
+    for (const profile of profiles ?? []) {
+      profilesById.set(profile.id, profile);
+    }
+  }
+
+  return (participants ?? []).reduce<
+    Map<
+      string,
+      {
+        invited_expert_ids: Set<string>;
+        first_access_expert_ids: Set<string>;
+        invited_expert_count: number;
+        first_access_expert_count: number;
+      }
+    >
+  >((map, participant) => {
+    const profile = profilesById.get(participant.profile_id);
+
+    if (!profile) {
+      return map;
+    }
+
+    const current = map.get(participant.consultation_id) ?? {
+      invited_expert_ids: new Set<string>(),
+      first_access_expert_ids: new Set<string>(),
+      invited_expert_count: 0,
+      first_access_expert_count: 0,
+    };
+
+    current.invited_expert_ids.add(participant.profile_id);
+
+    if (!profile.must_reset_password) {
+      current.first_access_expert_ids.add(participant.profile_id);
+    }
+
+    current.invited_expert_count = current.invited_expert_ids.size;
+    current.first_access_expert_count = current.first_access_expert_ids.size;
+    map.set(participant.consultation_id, current);
+    return map;
+  }, new Map());
 }
 
 async function getCommentVoteStatsByConsultationId(consultationId: string) {
@@ -251,9 +362,14 @@ export async function getConsultationsDirectory() {
     data: ConsultationDirectoryEntry[] | null;
     error: AppError | null;
   }>;
-  const [{ data, error }, commentSummariesByConsultationId] = await Promise.all([
+  const [
+    { data, error },
+    commentSummariesByConsultationId,
+    participantSummariesByConsultationId,
+  ] = await Promise.all([
     query,
     getCommentSummariesByConsultationId(),
+    getParticipantSummariesByConsultationId(),
   ]);
 
   if (error) {
@@ -262,10 +378,14 @@ export async function getConsultationsDirectory() {
 
   return (data ?? []).map((consultation) => {
     const commentSummary = commentSummariesByConsultationId.get(consultation.id);
+    const participantSummary = participantSummariesByConsultationId.get(consultation.id);
 
     return {
       ...consultation,
       comment_count: commentSummary?.comment_count ?? 0,
+      invited_expert_count: participantSummary?.invited_expert_count ?? 0,
+      first_access_expert_count: participantSummary?.first_access_expert_count ?? 0,
+      commenting_expert_count: commentSummary?.commenting_expert_count ?? 0,
       latest_comment_created_at: commentSummary?.latest_comment_created_at ?? null,
     };
   });
@@ -310,6 +430,9 @@ export async function getConsultationById(consultationId: string) {
   return {
     ...data,
     comment_count: 0,
+    invited_expert_count: 0,
+    first_access_expert_count: 0,
+    commenting_expert_count: 0,
     latest_comment_created_at: null,
   };
 }

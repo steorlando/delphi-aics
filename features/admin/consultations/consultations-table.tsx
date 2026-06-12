@@ -121,55 +121,79 @@ function DeleteConsultationButton({
 
 export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
   return (
-    <div className="table-wrap">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th scope="col">Consultazione</th>
-            <th scope="col">Stato</th>
-            <th scope="col">Documento</th>
-            <th scope="col">Commenti</th>
-            <th scope="col">Ultimo commento</th>
-            <th scope="col">Aggiornata</th>
-            <th scope="col">Azioni</th>
-          </tr>
-        </thead>
-        <tbody>
-          {consultations.map((consultation) => (
-            <tr key={consultation.id}>
-              <td>
-                <strong>{consultation.title}</strong>
-              </td>
-              <td>{formatConsultationStateLabel(consultation.current_state)}</td>
-              <td>{consultation.document_title || "Documento non ancora indicato"}</td>
-              <td>
-                {consultation.comment_count}{" "}
-                {consultation.comment_count === 1 ? "commento" : "commenti"}
-              </td>
-              <td>
-                {consultation.latest_comment_created_at
-                  ? formatDateTime(consultation.latest_comment_created_at)
-                  : "Nessun commento"}
-              </td>
-              <td>{formatDate(consultation.updated_at)}</td>
-              <td>
-                <div className="table-action-stack">
-                  <Link
-                    className="secondary-button small-button"
-                    href={`/admin/consultations/${consultation.id}`}
-                  >
-                    Apri dettaglio
-                  </Link>
-                  <DeleteConsultationButton
-                    consultationId={consultation.id}
-                    consultationLabel={consultation.title}
-                  />
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="admin-consultations-card-grid">
+      {consultations.map((consultation) => (
+        <article className="consultation-directory-card" key={consultation.id}>
+          <Link
+            aria-label={`Apri dettaglio consultazione ${consultation.title}`}
+            className="consultation-directory-card-link"
+            href={`/admin/consultations/${consultation.id}`}
+          >
+            <span className="sr-only">Apri dettaglio</span>
+          </Link>
+
+          <div className="consultation-directory-card-header">
+            <div className="consultation-directory-title-group">
+              <span className="expert-consultation-state-badge">
+                {formatConsultationStateLabel(consultation.current_state)}
+              </span>
+              <h3>{consultation.title}</h3>
+            </div>
+            <DeleteConsultationButton
+              consultationId={consultation.id}
+              consultationLabel={consultation.title}
+            />
+          </div>
+
+          <div className="consultation-directory-document">
+            <span>Documento</span>
+            <strong>{consultation.document_title || "Documento non ancora indicato"}</strong>
+          </div>
+
+          <dl className="consultation-directory-stats">
+            <div>
+              <dt>Creata</dt>
+              <dd>{formatDate(consultation.created_at)}</dd>
+            </div>
+            <div>
+              <dt>Aggiornata</dt>
+              <dd>{formatDate(consultation.updated_at)}</dd>
+            </div>
+            <div>
+              <dt>Esperti invitati</dt>
+              <dd>{consultation.invited_expert_count}</dd>
+            </div>
+            <div>
+              <dt>Primo accesso</dt>
+              <dd>
+                {consultation.first_access_expert_count}
+                <span> / {consultation.invited_expert_count}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Esperti con commenti</dt>
+              <dd>
+                {consultation.commenting_expert_count}
+                <span> / {consultation.invited_expert_count}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Commenti totali</dt>
+              <dd>{consultation.comment_count}</dd>
+            </div>
+          </dl>
+
+          <div className="consultation-directory-footer">
+            <span>
+              Ultimo commento:{" "}
+              {consultation.latest_comment_created_at
+                ? formatDateTime(consultation.latest_comment_created_at)
+                : "nessun commento"}
+            </span>
+            <span>Apri dettaglio</span>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
