@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 import {
   updateConsultationAction,
   type UpdateConsultationFormState,
@@ -8,6 +9,7 @@ import {
 import { CollapsiblePanel } from "@/features/admin/consultations/collapsible-panel";
 import {
   getConsultationStateSelectOptions,
+  type ConsultationState,
   type ConsultationDirectoryEntry,
 } from "@/features/admin/consultations/shared";
 
@@ -27,12 +29,26 @@ export function ConsultationSettingsForm({
   embedded = false,
   participantCount = 0,
 }: ConsultationSettingsFormProps) {
+  const router = useRouter();
+  const [currentState, setCurrentState] = useState<ConsultationState>(
+    consultation.current_state,
+  );
   const [state, formAction, isPending] = useActionState(
     updateConsultationAction,
     initialUpdateConsultationState,
   );
   const isPhaseOneBlocked =
     participantCount < 1 && consultation.current_state !== "phase_1_open";
+
+  useEffect(() => {
+    setCurrentState(consultation.current_state);
+  }, [consultation.id, consultation.current_state]);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      router.refresh();
+    }
+  }, [router, state.status]);
 
   const formContent = (
     <>
@@ -71,7 +87,11 @@ export function ConsultationSettingsForm({
         <div className="two-column-grid">
           <label className="field">
             <span>Fase consultazione</span>
-            <select defaultValue={consultation.current_state} name="currentState">
+            <select
+              name="currentState"
+              onChange={(event) => setCurrentState(event.target.value as ConsultationState)}
+              value={currentState}
+            >
               {getConsultationStateSelectOptions(consultation.current_state).map((option) => (
                 <option
                   disabled={isPhaseOneBlocked && option.value === "phase_1_open"}

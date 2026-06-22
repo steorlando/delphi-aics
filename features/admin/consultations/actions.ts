@@ -646,9 +646,9 @@ export async function updateConsultationAction(
       is_active: isActive,
     })
     .eq("id", consultationId)
-    .select("id")
+    .select("id, current_state")
     .single() as unknown as Promise<{
-    data: { id: string } | null;
+    data: { id: string; current_state: ConsultationState } | null;
     error: AppError | null;
   }>;
   const { data, error } = await updateQuery;
@@ -660,6 +660,14 @@ export async function updateConsultationAction(
         getConstraintErrorMessage(error) ??
         error?.message ??
         "Impossibile aggiornare la consultazione.",
+    };
+  }
+
+  if (data.current_state !== currentState) {
+    return {
+      status: "error",
+      message:
+        "La consultazione non ha mantenuto la fase selezionata. Riprova o verifica i vincoli del database.",
     };
   }
 
