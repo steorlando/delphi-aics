@@ -75,6 +75,12 @@ export type UpdateAdminConsultationCommentFormState = {
   notificationContext: AdminCommentNotificationContext | null;
 };
 
+export type CreateAdminConsultationCommentFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  createdCommentId?: string;
+};
+
 export type SendAdminCommentNotificationFormState = {
   status: "idle" | "success" | "error";
   message: string;
@@ -218,6 +224,25 @@ type ExpertSectionCommentsUpdateBuilder = {
           };
         };
       };
+    };
+  };
+};
+
+type ExpertSectionCommentsInsertBuilder = {
+  insert(values: {
+    consultation_id: string;
+    section_id: string;
+    expert_profile_id: string;
+    title: string;
+    body_text: string | null;
+    priority: ExpertSectionCommentPriority;
+    is_active: boolean;
+  }): {
+    select(columns: string): {
+      single<T>(): Promise<{
+        data: T | null;
+        error: AppError | null;
+      }>;
     };
   };
 };
@@ -1370,6 +1395,195 @@ export async function updateAdminConsultationCommentAction(
       },
       sectionId,
     },
+  };
+}
+
+export async function createAdminConsultationCommentAction(
+  _previousState: CreateAdminConsultationCommentFormState,
+  formData: FormData,
+): Promise<CreateAdminConsultationCommentFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono creare commenti.",
+    };
+  }
+
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const sectionId = normalizeText(formData.get("sectionId"));
+  const expertProfileId = normalizeText(formData.get("expertProfileId"));
+  const title = normalizeText(formData.get("title"));
+  const bodyText = normalizeOptionalText(formData.get("bodyText"));
+  const priority = normalizeCommentPriority(formData.get("priority"));
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  if (!sectionId) {
+    return {
+      status: "error",
+      message: "Seleziona una sezione prima di creare un commento.",
+    };
+  }
+
+  if (!expertProfileId) {
+    return {
+      status: "error",
+      message: "Seleziona l'esperto autore del commento.",
+    };
+  }
+
+  if (!title) {
+    return {
+      status: "error",
+      message: "Il titolo del commento e' obbligatorio.",
+    };
+  }
+
+  if (!priority) {
+    return {
+      status: "error",
+      message: "Seleziona una priorita' valida: low, medium o high.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id, current_state, is_active")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string; current_state: ConsultationState; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; current_state: ConsultationState; is_active: boolean } | null;
+    error: AppError | null;
+  }>;
+  const sectionQuery = supabase
+    .from("document_sections")
+    .select("id")
+    .eq("id", sectionId)
+    .eq("consultation_id", consultationId)
+    .eq("is_active", true)
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const assignmentQuery = supabase
+    .from("consultation_participants")
+    .select("profile_id")
+    .eq("consultation_id", consultationId)
+    .eq("profile_id", expertProfileId)
+    .eq("is_active", true)
+    .maybeSingle<{ profile_id: string }>() as unknown as Promise<{
+    data: { profile_id: string } | null;
+    error: AppError | null;
+  }>;
+  const expertQuery = supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", expertProfileId)
+    .eq("role", "expert")
+    .eq("is_active", true)
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const [
+    { data: consultation, error: consultationError },
+    { data: section, error: sectionError },
+    { data: assignment, error: assignmentError },
+    { data: expert, error: expertError },
+  ] = await Promise.all([consultationQuery, sectionQuery, assignmentQuery, expertQuery]);
+
+  if (consultationError || !consultation || !consultation.is_active) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (consultation.current_state !== "admin_review") {
+    return {
+      status: "error",
+      message:
+        "Gli amministratori possono creare nuovi commenti solo nella fase Accorpamento commenti.",
+    };
+  }
+
+  if (sectionError || !section) {
+    return {
+      status: "error",
+      message: sectionError?.message || "La sezione selezionata non e' disponibile.",
+    };
+  }
+
+  if (expertError || !expert || assignmentError || !assignment) {
+    return {
+      status: "error",
+      message:
+        expertError?.message ||
+        assignmentError?.message ||
+        "L'esperto selezionato non e' attivo o non e' assegnato alla consultazione.",
+    };
+  }
+
+  const commentsTable = supabase.from(
+    "expert_section_comments",
+  ) as unknown as ExpertSectionCommentsInsertBuilder;
+  const insertQuery = commentsTable
+    .insert({
+      consultation_id: consultationId,
+      section_id: sectionId,
+      expert_profile_id: expertProfileId,
+      title,
+      body_text: bodyText,
+      priority,
+      is_active: true,
+    })
+    .select("id")
+    .single<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await insertQuery;
+
+  if (error || !data) {
+    return {
+      status: "error",
+      message: error?.message || "Impossibile creare il commento.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: "expert_section_comment_created_by_admin",
+    target_table: "expert_section_comments",
+    target_id: data.id,
+    metadata: {
+      expert_profile_id: expertProfileId,
+      priority,
+      section_id: sectionId,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/consultations");
+  revalidatePath(getConsultationDetailPath(consultationId));
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
+
+  return {
+    status: "success",
+    message: "Commento creato correttamente.",
+    createdCommentId: data.id,
   };
 }
 

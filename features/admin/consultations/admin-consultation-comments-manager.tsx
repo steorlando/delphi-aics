@@ -4,11 +4,13 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  createAdminConsultationCommentAction,
   deleteAdminConsultationCommentAction,
   notifyAdminCommentAuthorAction,
   toggleAdminConsultationCommentPhase2ReviewAction,
   updateAdminConsultationCommentAction,
   type AdminCommentNotificationContext,
+  type CreateAdminConsultationCommentFormState,
   type SendAdminCommentNotificationFormState,
   type ToggleAdminConsultationCommentPhase2ReviewFormState,
   type UpdateAdminConsultationCommentFormState,
@@ -16,6 +18,7 @@ import {
 import { CollapsiblePanel } from "@/features/admin/consultations/collapsible-panel";
 import type {
   AdminConsultationCommentEntry,
+  ConsultationParticipantEntry,
   ConsultationState,
   DocumentSectionEntry,
 } from "@/features/admin/consultations/shared";
@@ -31,6 +34,7 @@ type AdminConsultationCommentsManagerProps = {
   consultationId: string;
   consultationState: ConsultationState;
   experts: ExpertDirectoryEntry[];
+  participants: ConsultationParticipantEntry[];
   sections: DocumentSectionEntry[];
 };
 
@@ -41,6 +45,11 @@ const initialState: UpdateAdminConsultationCommentFormState = {
 };
 
 const initialNotificationState: SendAdminCommentNotificationFormState = {
+  status: "idle",
+  message: "",
+};
+
+const initialCreateState: CreateAdminConsultationCommentFormState = {
   status: "idle",
   message: "",
 };
@@ -718,11 +727,153 @@ function AdminPhase2ReviewToggle({
   );
 }
 
+function CreateAdminCommentForm({
+  assignedExperts,
+  consultationId,
+  section,
+}: {
+  assignedExperts: ExpertDirectoryEntry[];
+  consultationId: string;
+  section: DocumentSectionEntry;
+}) {
+  const router = useRouter();
+  const [expertProfileId, setExpertProfileId] = useState(assignedExperts[0]?.id ?? "");
+  const [title, setTitle] = useState("");
+  const [bodyText, setBodyText] = useState("");
+  const [priority, setPriority] = useState<ExpertSectionCommentPriority>("medium");
+  const [state, formAction, isPending] = useActionState(
+    createAdminConsultationCommentAction,
+    initialCreateState,
+  );
+  const canCreate = assignedExperts.length > 0;
+
+  useEffect(() => {
+    setExpertProfileId((current) =>
+      assignedExperts.some((expert) => expert.id === current)
+        ? current
+        : assignedExperts[0]?.id ?? "",
+    );
+  }, [assignedExperts]);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      setTitle("");
+      setBodyText("");
+      setPriority("medium");
+      router.refresh();
+    }
+  }, [router, state.status]);
+
+  return (
+    <form action={formAction} className="auth-form admin-comment-create-form">
+      <input name="consultationId" type="hidden" value={consultationId} />
+      <input name="sectionId" type="hidden" value={section.id} />
+      <input name="priority" type="hidden" value={priority} />
+
+      <div className="section-heading admin-comment-create-heading">
+        <span className="eyebrow">Nuovo commento</span>
+        <div className="section-heading-copy">
+          <h2>Aggiungi commento</h2>
+        </div>
+      </div>
+
+      {!canCreate ? (
+        <p className="form-error expert-review-inline-feedback">
+          Assegna almeno un esperto attivo alla consultazione prima di creare commenti.
+        </p>
+      ) : null}
+
+      {state.status === "error" && state.message ? (
+        <p className="form-error expert-review-inline-feedback">{state.message}</p>
+      ) : null}
+
+      {state.status === "success" && state.message ? (
+        <p className="form-success expert-review-inline-feedback">{state.message}</p>
+      ) : null}
+
+      <label className="field">
+        <span>Autore di riferimento</span>
+        <select
+          disabled={!canCreate || isPending}
+          name="expertProfileId"
+          onChange={(event) => setExpertProfileId(event.target.value)}
+          required
+          value={expertProfileId}
+        >
+          {assignedExperts.map((expert) => (
+            <option key={expert.id} value={expert.id}>
+              {getExpertCompactLabel(expert)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>Titolo commento</span>
+        <input
+          disabled={!canCreate || isPending}
+          name="title"
+          onChange={(event) => setTitle(event.target.value)}
+          required
+          type="text"
+          value={title}
+        />
+      </label>
+
+      <label className="field">
+        <span>Descrizione</span>
+        <textarea
+          disabled={!canCreate || isPending}
+          name="bodyText"
+          onChange={(event) => setBodyText(event.target.value)}
+          value={bodyText}
+        />
+      </label>
+
+      <fieldset className="field priority-segmented-field">
+        <legend>Priorita&apos;</legend>
+        <div className="priority-segmented-control" role="radiogroup">
+          {[
+            { value: "low", label: "Bassa" },
+            { value: "medium", label: "Media" },
+            { value: "high", label: "Alta" },
+          ].map((option) => (
+            <button
+              aria-checked={priority === option.value}
+              className={`priority-segmented-option${priority === option.value ? " priority-segmented-option-selected" : ""}`}
+              disabled={!canCreate || isPending}
+              key={option.value}
+              onClick={() => setPriority(option.value as ExpertSectionCommentPriority)}
+              role="radio"
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className="compact-form-actions expert-review-form-actions">
+        <button
+          aria-label={isPending ? "Creazione commento in corso" : "Crea commento"}
+          className="primary-button small-button icon-action-button expert-review-submit-button"
+          disabled={!canCreate || isPending}
+          type="submit"
+        >
+          <PaperPlaneIcon />
+          <span className="sr-only">Crea commento</span>
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function AdminConsultationCommentsManager({
   comments,
   consultationId,
   consultationState,
   experts,
+  participants,
   sections,
 }: AdminConsultationCommentsManagerProps) {
   const router = useRouter();
@@ -749,11 +900,28 @@ export function AdminConsultationCommentsManager({
     () => new Map(experts.map((expert) => [expert.id, expert])),
     [experts],
   );
+  const activeAssignedExpertIds = useMemo(
+    () =>
+      new Set(
+        participants
+          .filter((participant) => participant.is_active)
+          .map((participant) => participant.profile_id),
+      ),
+    [participants],
+  );
+  const assignedExperts = useMemo(
+    () =>
+      experts.filter(
+        (expert) => expert.is_active && activeAssignedExpertIds.has(expert.id),
+      ),
+    [activeAssignedExpertIds, experts],
+  );
   const selectedSection =
     sections.find((section) => section.id === selectedSectionId) ?? sections[0] ?? null;
   const selectedSectionComments = selectedSection
     ? commentsBySection.get(selectedSection.id) ?? []
     : [];
+  const canAdminCreateComments = consultationState === "admin_review";
   const isPhase2State = consultationState === "phase_2_open"
     || consultationState === "phase_2_closed"
     || consultationState === "completed";
@@ -823,9 +991,11 @@ export function AdminConsultationCommentsManager({
 
   return (
     <CollapsiblePanel
-      defaultOpen={comments.length > 0}
+      defaultOpen={comments.length > 0 || canAdminCreateComments}
       description={
-        comments.length === 0
+        canAdminCreateComments
+          ? "Gli amministratori possono creare, modificare ed eliminare commenti durante l'accorpamento."
+          : comments.length === 0
           ? "Non ci sono ancora commenti attivi inseriti dagli esperti per questa consultazione."
           : `Sono presenti ${comments.length} ${comments.length === 1 ? "commento attivo" : "commenti attivi"} modificabili dagli amministratori.`
       }
@@ -838,7 +1008,7 @@ export function AdminConsultationCommentsManager({
           Commenti eliminati
         </Link>
       )}
-      title="Rivedi i commenti degli esperti"
+      title="Rivedi i commenti"
     >
       {sections.length === 0 ? (
         <p className="muted">
@@ -956,6 +1126,14 @@ export function AdminConsultationCommentsManager({
 
           <div className="expert-review-side-column admin-consultation-comments-side-column">
             <section className="panel-card expert-review-comments-history admin-consultation-comments-history">
+              {canAdminCreateComments && selectedSection ? (
+                <CreateAdminCommentForm
+                  assignedExperts={assignedExperts}
+                  consultationId={consultationId}
+                  section={selectedSection}
+                />
+              ) : null}
+
               {selectedSectionComments.length > 0 ? (
                 <div className="expert-review-comment-list expert-review-comment-list-compact admin-consultation-comment-list">
                   {selectedSectionComments.map((comment) => {

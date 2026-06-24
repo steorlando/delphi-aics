@@ -59,6 +59,7 @@ export default async function AdminConsultationDetailPage({
         consultationId={consultation.id}
         consultationState={consultation.current_state}
         experts={experts}
+        participants={participants}
         sections={sections}
       />
 
