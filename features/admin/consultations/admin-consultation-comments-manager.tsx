@@ -738,6 +738,11 @@ function CreateAdminCommentForm({
 }) {
   const router = useRouter();
   const [expertProfileId, setExpertProfileId] = useState(assignedExperts[0]?.id ?? "");
+  const [expertSearchText, setExpertSearchText] = useState(
+    assignedExperts[0] ? getExpertCompactLabel(assignedExperts[0]) : "",
+  );
+  const [isExpertMenuOpen, setIsExpertMenuOpen] = useState(false);
+  const [highlightedExpertIndex, setHighlightedExpertIndex] = useState(0);
   const [title, setTitle] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [priority, setPriority] = useState<ExpertSectionCommentPriority>("medium");
@@ -746,13 +751,32 @@ function CreateAdminCommentForm({
     initialCreateState,
   );
   const canCreate = assignedExperts.length > 0;
+  const normalizedExpertSearchText = expertSearchText.trim().toLowerCase();
+  const filteredExperts = useMemo(
+    () =>
+      normalizedExpertSearchText
+        ? assignedExperts.filter((expert) =>
+            getExpertCompactLabel(expert)
+              .toLowerCase()
+              .includes(normalizedExpertSearchText),
+          )
+        : assignedExperts,
+    [assignedExperts, normalizedExpertSearchText],
+  );
 
   useEffect(() => {
-    setExpertProfileId((current) =>
-      assignedExperts.some((expert) => expert.id === current)
-        ? current
-        : assignedExperts[0]?.id ?? "",
-    );
+    setExpertProfileId((current) => {
+      const currentExpert = assignedExperts.find((expert) => expert.id === current);
+
+      if (currentExpert) {
+        setExpertSearchText(getExpertCompactLabel(currentExpert));
+        return current;
+      }
+
+      const nextExpert = assignedExperts[0] ?? null;
+      setExpertSearchText(nextExpert ? getExpertCompactLabel(nextExpert) : "");
+      return nextExpert?.id ?? "";
+    });
   }, [assignedExperts]);
 
   useEffect(() => {
@@ -764,10 +788,22 @@ function CreateAdminCommentForm({
     }
   }, [router, state.status]);
 
+  useEffect(() => {
+    setHighlightedExpertIndex(0);
+  }, [expertSearchText]);
+
+  function selectExpert(expert: ExpertDirectoryEntry) {
+    setExpertProfileId(expert.id);
+    setExpertSearchText(getExpertCompactLabel(expert));
+    setIsExpertMenuOpen(false);
+    setHighlightedExpertIndex(0);
+  }
+
   return (
     <form action={formAction} className="auth-form admin-comment-create-form">
       <input name="consultationId" type="hidden" value={consultationId} />
       <input name="sectionId" type="hidden" value={section.id} />
+      <input name="expertProfileId" type="hidden" value={expertProfileId} />
       <input name="priority" type="hidden" value={priority} />
 
       <div className="section-heading admin-comment-create-heading">
@@ -793,19 +829,90 @@ function CreateAdminCommentForm({
 
       <label className="field">
         <span>Autore di riferimento</span>
-        <select
-          disabled={!canCreate || isPending}
-          name="expertProfileId"
-          onChange={(event) => setExpertProfileId(event.target.value)}
-          required
-          value={expertProfileId}
-        >
-          {assignedExperts.map((expert) => (
-            <option key={expert.id} value={expert.id}>
-              {getExpertCompactLabel(expert)}
-            </option>
-          ))}
-        </select>
+        <div className="admin-comment-author-combobox">
+          <input
+            aria-autocomplete="list"
+            aria-controls="admin-comment-author-options"
+            aria-expanded={isExpertMenuOpen}
+            autoComplete="off"
+            disabled={!canCreate || isPending}
+            onBlur={() => {
+              window.setTimeout(() => setIsExpertMenuOpen(false), 120);
+            }}
+            onChange={(event) => {
+              setExpertSearchText(event.target.value);
+              setExpertProfileId("");
+              setIsExpertMenuOpen(true);
+            }}
+            onFocus={() => setIsExpertMenuOpen(true)}
+            onKeyDown={(event) => {
+              if (!isExpertMenuOpen && event.key !== "Tab") {
+                setIsExpertMenuOpen(true);
+              }
+
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setHighlightedExpertIndex((current) =>
+                  Math.min(current + 1, Math.max(filteredExperts.length - 1, 0)),
+                );
+              }
+
+              if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setHighlightedExpertIndex((current) => Math.max(current - 1, 0));
+              }
+
+              if (event.key === "Enter" && filteredExperts[highlightedExpertIndex]) {
+                event.preventDefault();
+                selectExpert(filteredExperts[highlightedExpertIndex]);
+              }
+
+              if (event.key === "Escape") {
+                setIsExpertMenuOpen(false);
+              }
+            }}
+            placeholder="Cerca per nome, email o istituzione"
+            role="combobox"
+            type="text"
+            value={expertSearchText}
+          />
+
+          {isExpertMenuOpen && canCreate ? (
+            <div
+              className="admin-comment-author-options"
+              id="admin-comment-author-options"
+              role="listbox"
+            >
+              {filteredExperts.length > 0 ? (
+                filteredExperts.map((expert, index) => {
+                  const label = getExpertCompactLabel(expert);
+                  const isSelected = expert.id === expertProfileId;
+                  const isHighlighted = index === highlightedExpertIndex;
+
+                  return (
+                    <button
+                      aria-selected={isSelected}
+                      className={`admin-comment-author-option${isHighlighted ? " admin-comment-author-option-highlighted" : ""}${isSelected ? " admin-comment-author-option-selected" : ""}`}
+                      key={expert.id}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        selectExpert(expert);
+                      }}
+                      role="option"
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  );
+                })
+              ) : (
+                <span className="admin-comment-author-empty">
+                  Nessun autore trovato
+                </span>
+              )}
+            </div>
+          ) : null}
+        </div>
       </label>
 
       <label className="field">
@@ -857,7 +964,7 @@ function CreateAdminCommentForm({
         <button
           aria-label={isPending ? "Creazione commento in corso" : "Crea commento"}
           className="primary-button small-button icon-action-button expert-review-submit-button"
-          disabled={!canCreate || isPending}
+          disabled={!canCreate || !expertProfileId || isPending}
           type="submit"
         >
           <PaperPlaneIcon />
