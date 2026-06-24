@@ -737,10 +737,8 @@ function CreateAdminCommentForm({
   section: DocumentSectionEntry;
 }) {
   const router = useRouter();
-  const [expertProfileId, setExpertProfileId] = useState(assignedExperts[0]?.id ?? "");
-  const [expertSearchText, setExpertSearchText] = useState(
-    assignedExperts[0] ? getExpertCompactLabel(assignedExperts[0]) : "",
-  );
+  const [expertProfileId, setExpertProfileId] = useState("");
+  const [expertSearchText, setExpertSearchText] = useState("");
   const [isExpertMenuOpen, setIsExpertMenuOpen] = useState(false);
   const [highlightedExpertIndex, setHighlightedExpertIndex] = useState(0);
   const [title, setTitle] = useState("");
@@ -769,18 +767,19 @@ function CreateAdminCommentForm({
       const currentExpert = assignedExperts.find((expert) => expert.id === current);
 
       if (currentExpert) {
-        setExpertSearchText(getExpertCompactLabel(currentExpert));
         return current;
       }
 
-      const nextExpert = assignedExperts[0] ?? null;
-      setExpertSearchText(nextExpert ? getExpertCompactLabel(nextExpert) : "");
-      return nextExpert?.id ?? "";
+      setExpertSearchText("");
+      return "";
     });
   }, [assignedExperts]);
 
   useEffect(() => {
     if (state.status === "success") {
+      setExpertProfileId("");
+      setExpertSearchText("");
+      setIsExpertMenuOpen(false);
       setTitle("");
       setBodyText("");
       setPriority("medium");
