@@ -35,6 +35,7 @@ const allowedElementNames = new Set([
   "i",
   "img",
   "li",
+  "main",
   "ol",
   "p",
   "pre",
