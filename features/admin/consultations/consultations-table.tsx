@@ -120,14 +120,31 @@ function DeleteConsultationButton({
 }
 
 export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
+  const router = useRouter();
+
   return (
     <div className="admin-consultations-card-grid">
-      {consultations.map((consultation) => (
-        <article className="consultation-directory-card" key={consultation.id}>
+      {consultations.map((consultation) => {
+        const detailPath = `/admin/consultations/${consultation.id}`;
+
+        return (
+        <article
+          className="consultation-directory-card"
+          key={consultation.id}
+          onClick={(event) => {
+            const target = event.target;
+
+            if (target instanceof Element && target.closest("button, form")) {
+              return;
+            }
+
+            router.push(detailPath);
+          }}
+        >
           <Link
             aria-label={`Apri dettaglio consultazione ${consultation.title}`}
             className="consultation-directory-card-link"
-            href={`/admin/consultations/${consultation.id}`}
+            href={detailPath}
           >
             <span className="sr-only">Apri dettaglio</span>
           </Link>
@@ -193,7 +210,8 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
             <span>Apri dettaglio</span>
           </div>
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

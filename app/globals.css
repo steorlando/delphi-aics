@@ -819,11 +819,12 @@ input {
 .consultation-directory-card {
   position: relative;
   display: grid;
-  gap: 1rem;
-  padding: 1.15rem;
+  gap: 0.8rem;
+  padding: 1rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition:
     border-color 160ms ease,
@@ -842,7 +843,7 @@ input {
 .consultation-directory-card-link {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   border-radius: inherit;
 }
 
@@ -851,7 +852,8 @@ input {
 .consultation-directory-stats,
 .consultation-directory-footer {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .consultation-directory-card-header {
@@ -875,12 +877,13 @@ input {
 .consultation-directory-card .inline-action-form {
   position: relative;
   z-index: 3;
+  pointer-events: auto;
 }
 
 .consultation-directory-document {
   display: grid;
   gap: 0.25rem;
-  padding: 0.85rem 0.9rem;
+  padding: 0.65rem 0.75rem;
   border: 1px solid rgba(129, 145, 166, 0.16);
   border-radius: var(--radius-sm);
   background: rgba(67, 98, 127, 0.05);
@@ -904,15 +907,15 @@ input {
 
 .consultation-directory-stats {
   display: grid;
-  gap: 0.7rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .consultation-directory-stats div {
   display: grid;
-  gap: 0.28rem;
-  min-height: 4.25rem;
-  padding: 0.85rem 0.9rem;
+  gap: 0.22rem;
+  min-height: 3.6rem;
+  padding: 0.65rem 0.75rem;
   border: 1px solid rgba(129, 145, 166, 0.16);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.68);
@@ -920,7 +923,7 @@ input {
 
 .consultation-directory-stats dd {
   color: var(--text);
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 760;
   line-height: 1.15;
 }
@@ -3063,6 +3066,10 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .consultation-directory-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .compact-create-fields {
     grid-template-columns: 1fr;
   }
@@ -3150,6 +3157,10 @@ input {
 
   .app-subtitle {
     white-space: normal;
+  }
+
+  .consultation-directory-stats {
+    grid-template-columns: 1fr;
   }
 
   .sign-out-group {
