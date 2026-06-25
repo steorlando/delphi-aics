@@ -31,6 +31,7 @@ export type ExpertSectionCommentEntry = {
   body_text: string | null;
   priority: ExpertSectionCommentPriority;
   is_active: boolean;
+  display_order: number | null;
   created_at: string;
   updated_at: string;
 };

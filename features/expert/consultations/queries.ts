@@ -32,6 +32,7 @@ type ExpertPhase2CommentLookup = {
   title: string;
   body_text: string | null;
   is_active: boolean;
+  display_order: number | null;
   created_at: string;
 };
 
@@ -203,6 +204,7 @@ export async function getExpertSectionComments(
         "body_text",
         "priority",
         "is_active",
+        "display_order",
         "created_at",
         "updated_at",
       ].join(", "),
@@ -249,11 +251,14 @@ export async function getExpertPhase2VotableComments(
         "title",
         "body_text",
         "is_active",
+        "display_order",
         "created_at",
       ].join(", "),
     )
     .eq("consultation_id", consultationId)
     .eq("is_active", true)
+    .order("section_id", { ascending: true })
+    .order("display_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
     .returns<ExpertPhase2CommentLookup[]>() as unknown as Promise<{
     data: ExpertPhase2CommentLookup[] | null;
@@ -333,7 +338,7 @@ export async function getExpertPhase2VotableComments(
       section_id: comment.section_id,
       display_title: comment.title,
       display_body: comment.body_text ?? "",
-      order_index: null,
+      order_index: comment.display_order,
       current_vote_score: currentVoteByItemId.get(comment.id) ?? null,
       current_user_note: currentUserNote
         ? {

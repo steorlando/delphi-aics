@@ -96,6 +96,11 @@ export type ToggleAdminConsultationCommentPhase2ReviewFormState = {
   message: string;
 };
 
+export type ReorderAdminConsultationCommentsFormState = {
+  status: "success" | "error";
+  message: string;
+};
+
 type AppError = {
   code?: string;
   message: string;
@@ -279,6 +284,25 @@ type ExpertSectionCommentsPhase2ReviewBuilder = {
             data: T | null;
             error: AppError | null;
           }>;
+        };
+      };
+    };
+  };
+};
+
+type ExpertSectionCommentsReorderBuilder = {
+  update(values: {
+    display_order: number;
+  }): {
+    eq(column: string, value: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): {
+          select(columns: string): {
+            maybeSingle<T>(): Promise<{
+              data: T | null;
+              error: AppError | null;
+            }>;
+          };
         };
       };
     };
@@ -1895,6 +1919,177 @@ export async function toggleAdminConsultationCommentPhase2ReviewAction(
     message: isPhase2Reviewed
       ? "Commento segnato come gia' integrato."
       : "Commento riaperto tra quelli da lavorare.",
+  };
+}
+
+export async function reorderAdminConsultationCommentsAction(
+  formData: FormData,
+): Promise<ReorderAdminConsultationCommentsFormState> {
+  const { profile } = await getAuthContext();
+
+  if (!profile || !profile.is_active || profile.role !== "admin") {
+    return {
+      status: "error",
+      message: "Solo gli amministratori autenticati possono riordinare i commenti.",
+    };
+  }
+
+  const consultationId = normalizeText(formData.get("consultationId"));
+  const sectionId = normalizeText(formData.get("sectionId"));
+  const orderedCommentIds = normalizeStringArray(formData.getAll("commentIds"));
+
+  if (!consultationId) {
+    return {
+      status: "error",
+      message: "Consultazione non valida.",
+    };
+  }
+
+  if (!sectionId) {
+    return {
+      status: "error",
+      message: "Sezione non valida.",
+    };
+  }
+
+  if (orderedCommentIds.length < 2) {
+    return {
+      status: "success",
+      message: "Ordine gia' aggiornato.",
+    };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const adminActionLogsTable = supabase.from(
+    "admin_action_logs",
+  ) as unknown as AdminActionLogsInsertBuilder;
+  const consultationQuery = supabase
+    .from("consultations")
+    .select("id, current_state, is_active")
+    .eq("id", consultationId)
+    .maybeSingle<{ id: string; current_state: ConsultationState; is_active: boolean }>() as unknown as Promise<{
+    data: { id: string; current_state: ConsultationState; is_active: boolean } | null;
+    error: AppError | null;
+  }>;
+  const sectionQuery = supabase
+    .from("document_sections")
+    .select("id")
+    .eq("id", sectionId)
+    .eq("consultation_id", consultationId)
+    .eq("is_active", true)
+    .maybeSingle<{ id: string }>() as unknown as Promise<{
+    data: { id: string } | null;
+    error: AppError | null;
+  }>;
+  const commentsQuery = supabase
+    .from("expert_section_comments")
+    .select("id")
+    .eq("consultation_id", consultationId)
+    .eq("section_id", sectionId)
+    .eq("is_active", true)
+    .returns<{ id: string }[]>() as unknown as Promise<{
+    data: { id: string }[] | null;
+    error: AppError | null;
+  }>;
+  const [
+    { data: consultation, error: consultationError },
+    { data: section, error: sectionError },
+    { data: existingComments, error: commentsError },
+  ] = await Promise.all([consultationQuery, sectionQuery, commentsQuery]);
+
+  if (consultationError || !consultation || !consultation.is_active) {
+    return {
+      status: "error",
+      message: consultationError?.message || "Consultazione non disponibile.",
+    };
+  }
+
+  if (consultation.current_state !== "admin_review") {
+    return {
+      status: "error",
+      message: "I commenti possono essere riordinati solo nella fase Accorpamento commenti.",
+    };
+  }
+
+  if (sectionError || !section) {
+    return {
+      status: "error",
+      message: sectionError?.message || "La sezione selezionata non e' disponibile.",
+    };
+  }
+
+  if (commentsError) {
+    return {
+      status: "error",
+      message: commentsError.message || "Impossibile leggere i commenti della sezione.",
+    };
+  }
+
+  const existingCommentIds = new Set((existingComments ?? []).map((comment) => comment.id));
+  const orderedCommentIdSet = new Set(orderedCommentIds);
+  const containsSameComments =
+    existingCommentIds.size === orderedCommentIdSet.size
+    && orderedCommentIds.every((commentId) => existingCommentIds.has(commentId));
+
+  if (!containsSameComments) {
+    return {
+      status: "error",
+      message: "La lista dei commenti non e' aggiornata. Ricarica la pagina e riprova.",
+    };
+  }
+
+  const commentsTable = supabase.from(
+    "expert_section_comments",
+  ) as unknown as ExpertSectionCommentsReorderBuilder;
+  const updateResults = await Promise.all(
+    orderedCommentIds.map((commentId, index) =>
+      commentsTable
+        .update({
+          display_order: index + 1,
+        })
+        .eq("id", commentId)
+        .eq("consultation_id", consultationId)
+        .eq("section_id", sectionId)
+        .select("id")
+        .maybeSingle<{ id: string }>(),
+    ),
+  );
+  const failedUpdate = updateResults.find((result) => result.error || !result.data);
+
+  if (failedUpdate) {
+    return {
+      status: "error",
+      message: isMissingColumnError(
+        failedUpdate.error,
+        "expert_section_comments",
+        "display_order",
+      )
+        ? "Il database non e' ancora pronto per salvare l'ordine. Applica prima la nuova migrazione."
+        : failedUpdate.error?.message || "Impossibile salvare il nuovo ordine dei commenti.",
+    };
+  }
+
+  await logAdminAction(adminActionLogsTable, {
+    admin_profile_id: profile.id,
+    consultation_id: consultationId,
+    action_type: "expert_section_comments_reordered",
+    target_table: "expert_section_comments",
+    target_id: sectionId,
+    metadata: {
+      section_id: sectionId,
+      comment_count: String(orderedCommentIds.length),
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/consultations");
+  revalidatePath(getConsultationDetailPath(consultationId));
+  revalidatePath("/app");
+  revalidatePath(getExpertConsultationPath(consultationId));
+
+  return {
+    status: "success",
+    message: "Ordine dei commenti aggiornato.",
   };
 }
 

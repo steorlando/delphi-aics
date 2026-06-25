@@ -1,12 +1,20 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   createAdminConsultationCommentAction,
   deleteAdminConsultationCommentAction,
   notifyAdminCommentAuthorAction,
+  reorderAdminConsultationCommentsAction,
   toggleAdminConsultationCommentPhase2ReviewAction,
   updateAdminConsultationCommentAction,
   type AdminCommentNotificationContext,
@@ -112,6 +120,57 @@ function getInitialSelectedSectionId(
   return sections.find((section) => sectionIdsWithComments.has(section.id))?.id
     ?? sections[0]?.id
     ?? "";
+}
+
+type CommentDropTarget = {
+  commentId: string;
+  placement: "before" | "after";
+};
+
+function applyCommentOrder(
+  comments: AdminConsultationCommentEntry[],
+  orderedCommentIds: string[] | undefined,
+) {
+  if (!orderedCommentIds || orderedCommentIds.length === 0) {
+    return comments;
+  }
+
+  const commentById = new Map(comments.map((comment) => [comment.id, comment]));
+  const orderedComments = orderedCommentIds
+    .map((commentId) => commentById.get(commentId))
+    .filter((comment): comment is AdminConsultationCommentEntry => Boolean(comment));
+  const orderedCommentIdSet = new Set(orderedCommentIds);
+  const missingComments = comments.filter((comment) => !orderedCommentIdSet.has(comment.id));
+
+  return [...orderedComments, ...missingComments];
+}
+
+function moveCommentInSection(
+  comments: AdminConsultationCommentEntry[],
+  draggedCommentId: string,
+  targetCommentId: string,
+  placement: CommentDropTarget["placement"],
+) {
+  if (draggedCommentId === targetCommentId) {
+    return comments;
+  }
+
+  const draggedComment = comments.find((comment) => comment.id === draggedCommentId);
+
+  if (!draggedComment) {
+    return comments;
+  }
+
+  const nextComments = comments.filter((comment) => comment.id !== draggedCommentId);
+  const targetIndex = nextComments.findIndex((comment) => comment.id === targetCommentId);
+
+  if (targetIndex < 0) {
+    return comments;
+  }
+
+  nextComments.splice(placement === "after" ? targetIndex + 1 : targetIndex, 0, draggedComment);
+
+  return nextComments;
 }
 
 function AdminPhase2VoteNotes({
@@ -989,6 +1048,13 @@ export function AdminConsultationCommentsManager({
   const [pendingNotificationContext, setPendingNotificationContext] =
     useState<AdminCommentNotificationContext | null>(null);
   const [phase2ReviewOverrides, setPhase2ReviewOverrides] = useState<Record<string, boolean>>({});
+  const [optimisticOrderBySectionId, setOptimisticOrderBySectionId] = useState<
+    Record<string, string[]>
+  >({});
+  const [draggedCommentId, setDraggedCommentId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<CommentDropTarget | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+  const [reorderErrorMessage, setReorderErrorMessage] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState(() =>
     getInitialSelectedSectionId(sections, comments),
   );
@@ -1024,10 +1090,17 @@ export function AdminConsultationCommentsManager({
   );
   const selectedSection =
     sections.find((section) => section.id === selectedSectionId) ?? sections[0] ?? null;
-  const selectedSectionComments = selectedSection
+  const selectedSectionBaseComments = selectedSection
     ? commentsBySection.get(selectedSection.id) ?? []
     : [];
+  const selectedSectionComments = selectedSection
+    ? applyCommentOrder(
+      selectedSectionBaseComments,
+      optimisticOrderBySectionId[selectedSection.id],
+    )
+    : [];
   const canAdminCreateComments = consultationState === "admin_review";
+  const canAdminReorderComments = consultationState === "admin_review";
   const isPhase2State = consultationState === "phase_2_open"
     || consultationState === "phase_2_closed"
     || consultationState === "completed";
@@ -1052,6 +1125,7 @@ export function AdminConsultationCommentsManager({
 
   useEffect(() => {
     setPhase2ReviewOverrides({});
+    setOptimisticOrderBySectionId({});
   }, [comments]);
 
   function handleSectionSelect(sectionId: string) {
@@ -1066,6 +1140,101 @@ export function AdminConsultationCommentsManager({
   function handleCommentEdit(commentId: string) {
     setEditingCommentId(commentId);
     setExpandedCommentId(commentId);
+  }
+
+  function handleCommentDragStart(
+    event: DragEvent<HTMLElement>,
+    commentId: string,
+  ) {
+    if (!canAdminReorderComments || isReordering) {
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", commentId);
+    setDraggedCommentId(commentId);
+    setReorderErrorMessage(null);
+  }
+
+  function handleCommentDragOver(
+    event: DragEvent<HTMLElement>,
+    commentId: string,
+  ) {
+    if (!canAdminReorderComments || !draggedCommentId || draggedCommentId === commentId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const placement = event.clientY > bounds.top + bounds.height / 2 ? "after" : "before";
+    setDropTarget({ commentId, placement });
+  }
+
+  function clearCommentDragState() {
+    setDraggedCommentId(null);
+    setDropTarget(null);
+  }
+
+  async function handleCommentDrop(
+    event: DragEvent<HTMLElement>,
+    targetCommentId: string,
+  ) {
+    event.preventDefault();
+
+    if (!selectedSection || !canAdminReorderComments || isReordering) {
+      clearCommentDragState();
+      return;
+    }
+
+    const sourceCommentId =
+      draggedCommentId || event.dataTransfer.getData("text/plain");
+    const placement =
+      dropTarget?.commentId === targetCommentId ? dropTarget.placement : "before";
+    const nextComments = moveCommentInSection(
+      selectedSectionComments,
+      sourceCommentId,
+      targetCommentId,
+      placement,
+    );
+    const nextCommentIds = nextComments.map((comment) => comment.id);
+    const currentCommentIds = selectedSectionComments.map((comment) => comment.id);
+
+    clearCommentDragState();
+
+    if (nextCommentIds.join("|") === currentCommentIds.join("|")) {
+      return;
+    }
+
+    setOptimisticOrderBySectionId((current) => ({
+      ...current,
+      [selectedSection.id]: nextCommentIds,
+    }));
+    setIsReordering(true);
+    setReorderErrorMessage(null);
+
+    const formData = new FormData();
+    formData.set("consultationId", consultationId);
+    formData.set("sectionId", selectedSection.id);
+    for (const commentId of nextCommentIds) {
+      formData.append("commentIds", commentId);
+    }
+
+    const result = await reorderAdminConsultationCommentsAction(formData);
+
+    setIsReordering(false);
+
+    if (result.status === "error") {
+      setReorderErrorMessage(result.message);
+      setOptimisticOrderBySectionId((current) => {
+        const next = { ...current };
+        delete next[selectedSection.id];
+        return next;
+      });
+    }
+
+    router.refresh();
   }
 
   function handleCommentActionCommitted(
@@ -1232,21 +1401,27 @@ export function AdminConsultationCommentsManager({
 
           <div className="expert-review-side-column admin-consultation-comments-side-column">
             <section className="panel-card expert-review-comments-history admin-consultation-comments-history">
-              {canAdminCreateComments && selectedSection ? (
-                <CreateAdminCommentForm
-                  assignedExperts={assignedExperts}
-                  consultationId={consultationId}
-                  section={selectedSection}
-                />
-              ) : null}
-
               {selectedSectionComments.length > 0 ? (
                 <div className="expert-review-comment-list expert-review-comment-list-compact admin-consultation-comment-list">
-                  {selectedSectionComments.map((comment) => {
+                  {reorderErrorMessage ? (
+                    <p className="form-error admin-consultation-comment-order-feedback">
+                      {reorderErrorMessage}
+                    </p>
+                  ) : null}
+
+                  {isReordering ? (
+                    <p className="muted admin-consultation-comment-order-feedback">
+                      Salvataggio ordine...
+                    </p>
+                  ) : null}
+
+                  {selectedSectionComments.map((comment, index) => {
                     const isExpanded = expandedCommentId === comment.id;
                     const isEditing = editingCommentId === comment.id;
                     const author = expertsById.get(comment.expert_profile_id) ?? null;
                     const compactAuthorLabel = getExpertCompactLabel(author);
+                    const isDragging = draggedCommentId === comment.id;
+                    const isCurrentDropTarget = dropTarget?.commentId === comment.id;
                     const isPhase2Reviewed = Object.prototype.hasOwnProperty.call(
                       phase2ReviewOverrides,
                       comment.id,
@@ -1256,10 +1431,28 @@ export function AdminConsultationCommentsManager({
 
                     return (
                       <article
-                        className={`expert-review-comment-card expert-review-comment-card-compact${isExpanded ? " expert-review-comment-card-expanded" : ""}${isEditing ? " expert-review-comment-card-editing" : ""}${isPhase2State && isPhase2Reviewed ? " admin-consultation-comment-card-reviewed" : ""}`}
+                        className={`expert-review-comment-card expert-review-comment-card-compact admin-consultation-comment-card${isExpanded ? " expert-review-comment-card-expanded" : ""}${isEditing ? " expert-review-comment-card-editing" : ""}${isPhase2State && isPhase2Reviewed ? " admin-consultation-comment-card-reviewed" : ""}${isDragging ? " admin-consultation-comment-card-dragging" : ""}${isCurrentDropTarget ? ` admin-consultation-comment-card-drop-${dropTarget.placement}` : ""}`}
+                        draggable={canAdminReorderComments && !isEditing && !isReordering}
                         key={comment.id}
+                        onDragEnd={clearCommentDragState}
+                        onDragOver={(event) => handleCommentDragOver(event, comment.id)}
+                        onDragStart={(event) => handleCommentDragStart(event, comment.id)}
+                        onDrop={(event) => handleCommentDrop(event, comment.id)}
                       >
                         <div className="expert-review-comment-row">
+                          {canAdminReorderComments ? (
+                            <span
+                              aria-hidden="true"
+                              className="admin-comment-drag-handle"
+                            >
+                              ::
+                            </span>
+                          ) : null}
+
+                          <span className="admin-comment-order-index">
+                            {index + 1}
+                          </span>
+
                           <div className="admin-consultation-comment-row-copy">
                             <div className="expert-review-comment-row-main">
                               <strong className="expert-review-comment-row-title">
@@ -1371,6 +1564,14 @@ export function AdminConsultationCommentsManager({
                   Questa sezione non ha ancora commenti attivi da revisionare.
                 </p>
               )}
+
+              {canAdminCreateComments && selectedSection ? (
+                <CreateAdminCommentForm
+                  assignedExperts={assignedExperts}
+                  consultationId={consultationId}
+                  section={selectedSection}
+                />
+              ) : null}
             </section>
           </div>
         </section>

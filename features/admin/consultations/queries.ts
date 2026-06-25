@@ -22,9 +22,15 @@ type AdminConsultationCommentLookup = {
   body_text: string | null;
   priority: AdminConsultationCommentEntry["priority"];
   is_active: boolean;
+  display_order: number | null;
   created_at: string;
   updated_at: string;
 };
+
+type AdminConsultationCommentFallbackLookup = Omit<
+  AdminConsultationCommentLookup,
+  "display_order"
+>;
 
 type AdminCommentVoteLookup = {
   comment_id: string;
@@ -517,12 +523,14 @@ export async function getExpertSectionCommentsByConsultationId(
         "body_text",
         "priority",
         "is_active",
+        "display_order",
         "created_at",
         "updated_at",
       ].join(", "),
     )
     .eq("consultation_id", consultationId)
     .eq("is_active", true)
+    .order("display_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
     .returns<AdminConsultationCommentLookup[]>() as unknown as Promise<{
     data: AdminConsultationCommentLookup[] | null;
@@ -540,12 +548,47 @@ export async function getExpertSectionCommentsByConsultationId(
     getCommentVoteNotesByConsultationId(consultationId),
   ]);
 
-  if (error) {
-    throw error;
+  let comments = data ?? [];
+  let commentsError = error;
+
+  if (isMissingColumnError(error, "expert_section_comments", "display_order")) {
+    const fallbackQuery = supabase
+      .from("expert_section_comments")
+      .select(
+        [
+          "id",
+          "consultation_id",
+          "section_id",
+          "expert_profile_id",
+          "title",
+          "body_text",
+          "priority",
+          "is_active",
+          "created_at",
+          "updated_at",
+        ].join(", "),
+      )
+      .eq("consultation_id", consultationId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .returns<AdminConsultationCommentFallbackLookup[]>() as unknown as Promise<{
+      data: AdminConsultationCommentFallbackLookup[] | null;
+      error: AppError | null;
+    }>;
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    comments = (fallbackData ?? []).map((comment) => ({
+      ...comment,
+      display_order: null,
+    }));
+    commentsError = fallbackError;
+  }
+
+  if (commentsError) {
+    throw commentsError;
   }
 
   return mapCommentsWithVoteStats(
-    data ?? [],
+    comments,
     voteStatsByCommentId,
     phase2ReviewStatusByCommentId,
     voteNotesByCommentId,
@@ -568,6 +611,7 @@ export async function getInactiveExpertSectionCommentsByConsultationId(
         "body_text",
         "priority",
         "is_active",
+        "display_order",
         "created_at",
         "updated_at",
       ].join(", "),
@@ -585,12 +629,47 @@ export async function getInactiveExpertSectionCommentsByConsultationId(
     getCommentPhase2ReviewStatusByConsultationId(consultationId),
   ]);
 
-  if (error) {
-    throw error;
+  let comments = data ?? [];
+  let commentsError = error;
+
+  if (isMissingColumnError(error, "expert_section_comments", "display_order")) {
+    const fallbackQuery = supabase
+      .from("expert_section_comments")
+      .select(
+        [
+          "id",
+          "consultation_id",
+          "section_id",
+          "expert_profile_id",
+          "title",
+          "body_text",
+          "priority",
+          "is_active",
+          "created_at",
+          "updated_at",
+        ].join(", "),
+      )
+      .eq("consultation_id", consultationId)
+      .eq("is_active", false)
+      .order("updated_at", { ascending: false })
+      .returns<AdminConsultationCommentFallbackLookup[]>() as unknown as Promise<{
+      data: AdminConsultationCommentFallbackLookup[] | null;
+      error: AppError | null;
+    }>;
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    comments = (fallbackData ?? []).map((comment) => ({
+      ...comment,
+      display_order: null,
+    }));
+    commentsError = fallbackError;
+  }
+
+  if (commentsError) {
+    throw commentsError;
   }
 
   return mapCommentsWithVoteStats(
-    data ?? [],
+    comments,
     voteStatsByCommentId,
     phase2ReviewStatusByCommentId,
   );

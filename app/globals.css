@@ -2431,6 +2431,11 @@ input {
   flex: 1 1 auto;
 }
 
+.admin-consultation-comment-order-feedback {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
 .expert-review-comment-card {
   display: grid;
   gap: 0.75rem;
@@ -2479,6 +2484,67 @@ input {
 .expert-review-comment-card-compact {
   gap: 0.65rem;
   padding: 0.8rem 0.9rem;
+}
+
+.admin-consultation-comment-card {
+  position: relative;
+}
+
+.admin-consultation-comment-card[draggable="true"] {
+  cursor: grab;
+}
+
+.admin-consultation-comment-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.admin-consultation-comment-card-dragging {
+  opacity: 0.55;
+}
+
+.admin-consultation-comment-card-drop-before::before,
+.admin-consultation-comment-card-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 0.18rem;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgba(67, 98, 127, 0.12);
+}
+
+.admin-consultation-comment-card-drop-before::before {
+  top: -0.45rem;
+}
+
+.admin-consultation-comment-card-drop-after::after {
+  bottom: -0.45rem;
+}
+
+.admin-comment-drag-handle {
+  flex: 0 0 auto;
+  color: var(--text-soft);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  padding-top: 0.2rem;
+}
+
+.admin-comment-order-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid rgba(129, 145, 166, 0.26);
+  border-radius: 999px;
+  background: rgba(247, 249, 252, 0.86);
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .expert-review-comment-card-expanded {
@@ -3059,6 +3125,19 @@ input {
     grid-column: 1 / -1;
     align-self: start;
   }
+
+  .admin-consultation-comments-layout .admin-consultation-comments-side-column {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-consultation-comments-layout .expert-review-document-panel {
+    grid-column: 1 / -1;
+  }
+
+  .expert-review-layout-nav-collapsed .admin-consultation-comments-side-column {
+    grid-column: 2;
+  }
 }
 
 @media (max-width: 980px) {
@@ -3099,6 +3178,17 @@ input {
 
   .expert-review-side-column {
     align-self: start;
+  }
+
+  .admin-consultation-comments-layout .admin-consultation-comments-side-column,
+  .expert-review-layout-nav-collapsed .admin-consultation-comments-side-column {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .admin-consultation-comments-layout .expert-review-document-panel {
+    grid-column: 1;
+    grid-row: 3;
   }
 
   .expert-review-priority-row {

@@ -102,6 +102,7 @@ export type AdminConsultationCommentEntry = {
   body_text: string | null;
   priority: ExpertSectionCommentPriority;
   is_active: boolean;
+  display_order: number | null;
   created_at: string;
   updated_at: string;
   is_phase_2_reviewed: boolean;
