@@ -174,8 +174,10 @@ function moveCommentInSection(
 }
 
 function AdminPhase2VoteNotes({
+  expertsById,
   notes,
 }: {
+  expertsById: ReadonlyMap<string, ExpertDirectoryEntry>;
   notes: NonNullable<AdminConsultationCommentEntry["phase_2_vote_notes"]>;
 }) {
   if (notes.length === 0) {
@@ -187,10 +189,10 @@ function AdminPhase2VoteNotes({
       <span className="phase-2-note-list-title">
         Commenti alla votazione degli esperti
       </span>
-      {notes.map((note, index) => (
+      {notes.map((note) => (
         <article className="phase-2-note-item" key={note.id}>
           <span className="phase-2-note-item-label">
-            Commento anonimo {index + 1}
+            {getExpertCompactLabel(expertsById.get(note.author_profile_id) ?? null)}
           </span>
           <p>{note.body_text}</p>
         </article>
@@ -1533,6 +1535,7 @@ export function AdminConsultationCommentsManager({
                                   </p>
                                 )}
                                 <AdminPhase2VoteNotes
+                                  expertsById={expertsById}
                                   notes={comment.phase_2_vote_notes ?? []}
                                 />
                               </>

@@ -295,7 +295,7 @@ async function getCommentVoteNotesByConsultationId(consultationId: string) {
   const supabase = createAdminSupabaseClient();
   const query = supabase
     .from("expert_section_comment_vote_notes")
-    .select("id, comment_id, body_text, created_at, updated_at")
+    .select("id, comment_id, author_profile_id, body_text, created_at, updated_at")
     .eq("consultation_id", consultationId)
     .order("created_at", { ascending: true })
     .returns<AdminPhase2VoteNoteLookup[]>() as unknown as Promise<{

@@ -114,6 +114,7 @@ export type AdminConsultationCommentEntry = {
 export type AdminPhase2VoteNoteEntry = {
   id: string;
   comment_id: string;
+  author_profile_id: string;
   body_text: string;
   created_at: string;
   updated_at: string;
