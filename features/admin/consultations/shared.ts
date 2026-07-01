@@ -68,6 +68,8 @@ export type ConsultationDirectoryEntry = {
   invited_expert_count: number;
   first_access_expert_count: number;
   commenting_expert_count: number;
+  voting_expert_count: number;
+  vote_count: number;
   latest_comment_created_at: string | null;
 };
 

@@ -198,6 +198,17 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
               <dt>Commenti totali</dt>
               <dd>{consultation.comment_count}</dd>
             </div>
+            <div>
+              <dt>Esperti votanti</dt>
+              <dd>
+                {consultation.voting_expert_count}
+                <span> / {consultation.invited_expert_count}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Voti espressi</dt>
+              <dd>{consultation.vote_count}</dd>
+            </div>
           </dl>
 
           <div className="consultation-directory-footer">

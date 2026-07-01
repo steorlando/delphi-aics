@@ -61,6 +61,11 @@ type ConsultationParticipantProfileLookup = {
   must_reset_password: boolean;
 };
 
+type ConsultationVoteSummaryLookup = {
+  consultation_id: string;
+  voter_profile_id: string;
+};
+
 function isMissingRelationError(error: AppError | null, relationName: string) {
   if (!error?.message) {
     return false;
@@ -225,6 +230,48 @@ async function getParticipantSummariesByConsultationId() {
   }, new Map());
 }
 
+async function getVoteSummariesByConsultationId() {
+  const supabase = createAdminSupabaseClient();
+  const query = supabase
+    .from("expert_section_comment_votes")
+    .select("consultation_id, voter_profile_id")
+    .returns<ConsultationVoteSummaryLookup[]>() as unknown as Promise<{
+    data: ConsultationVoteSummaryLookup[] | null;
+    error: AppError | null;
+  }>;
+  const { data, error } = await query;
+
+  if (error) {
+    if (isMissingRelationError(error, "expert_section_comment_votes")) {
+      return new Map<string, { voting_expert_count: number; vote_count: number }>();
+    }
+
+    throw error;
+  }
+
+  return (data ?? []).reduce<
+    Map<
+      string,
+      {
+        voting_expert_ids: Set<string>;
+        voting_expert_count: number;
+        vote_count: number;
+      }
+    >
+  >((map, vote) => {
+    const current = map.get(vote.consultation_id) ?? {
+      voting_expert_ids: new Set<string>(),
+      voting_expert_count: 0,
+      vote_count: 0,
+    };
+    current.voting_expert_ids.add(vote.voter_profile_id);
+    current.voting_expert_count = current.voting_expert_ids.size;
+    current.vote_count += 1;
+    map.set(vote.consultation_id, current);
+    return map;
+  }, new Map());
+}
+
 async function getCommentVoteStatsByConsultationId(consultationId: string) {
   const supabase = createAdminSupabaseClient();
   const query = supabase
@@ -372,10 +419,12 @@ export async function getConsultationsDirectory() {
     { data, error },
     commentSummariesByConsultationId,
     participantSummariesByConsultationId,
+    voteSummariesByConsultationId,
   ] = await Promise.all([
     query,
     getCommentSummariesByConsultationId(),
     getParticipantSummariesByConsultationId(),
+    getVoteSummariesByConsultationId(),
   ]);
 
   if (error) {
@@ -385,6 +434,7 @@ export async function getConsultationsDirectory() {
   return (data ?? []).map((consultation) => {
     const commentSummary = commentSummariesByConsultationId.get(consultation.id);
     const participantSummary = participantSummariesByConsultationId.get(consultation.id);
+    const voteSummary = voteSummariesByConsultationId.get(consultation.id);
 
     return {
       ...consultation,
@@ -392,6 +442,8 @@ export async function getConsultationsDirectory() {
       invited_expert_count: participantSummary?.invited_expert_count ?? 0,
       first_access_expert_count: participantSummary?.first_access_expert_count ?? 0,
       commenting_expert_count: commentSummary?.commenting_expert_count ?? 0,
+      voting_expert_count: voteSummary?.voting_expert_count ?? 0,
+      vote_count: voteSummary?.vote_count ?? 0,
       latest_comment_created_at: commentSummary?.latest_comment_created_at ?? null,
     };
   });
