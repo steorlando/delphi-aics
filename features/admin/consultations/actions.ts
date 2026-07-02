@@ -2007,10 +2007,14 @@ export async function reorderAdminConsultationCommentsAction(
     };
   }
 
-  if (consultation.current_state !== "admin_review") {
+  if (
+    consultation.current_state !== "admin_review"
+    && consultation.current_state !== "phase_2_open"
+  ) {
     return {
       status: "error",
-      message: "I commenti possono essere riordinati solo nella fase Accorpamento commenti.",
+      message:
+        "I commenti possono essere riordinati solo nelle fasi Accorpamento commenti e Votazione commenti.",
     };
   }
 

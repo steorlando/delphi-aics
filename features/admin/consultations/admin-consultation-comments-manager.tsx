@@ -1103,7 +1103,8 @@ export function AdminConsultationCommentsManager({
     : [];
   const canAdminCreateComments = consultationState === "admin_review"
     || consultationState === "phase_2_open";
-  const canAdminReorderComments = consultationState === "admin_review";
+  const canAdminReorderComments = consultationState === "admin_review"
+    || consultationState === "phase_2_open";
   const isPhase2State = consultationState === "phase_2_open"
     || consultationState === "phase_2_closed"
     || consultationState === "completed";
