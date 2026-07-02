@@ -1533,11 +1533,14 @@ export async function createAdminConsultationCommentAction(
     };
   }
 
-  if (consultation.current_state !== "admin_review") {
+  if (
+    consultation.current_state !== "admin_review"
+    && consultation.current_state !== "phase_2_open"
+  ) {
     return {
       status: "error",
       message:
-        "Gli amministratori possono creare nuovi commenti solo nella fase Accorpamento commenti.",
+        "Gli amministratori possono creare nuovi commenti solo nelle fasi Accorpamento commenti e Votazione commenti.",
     };
   }
 

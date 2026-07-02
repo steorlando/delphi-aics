@@ -1101,7 +1101,8 @@ export function AdminConsultationCommentsManager({
       optimisticOrderBySectionId[selectedSection.id],
     )
     : [];
-  const canAdminCreateComments = consultationState === "admin_review";
+  const canAdminCreateComments = consultationState === "admin_review"
+    || consultationState === "phase_2_open";
   const canAdminReorderComments = consultationState === "admin_review";
   const isPhase2State = consultationState === "phase_2_open"
     || consultationState === "phase_2_closed"
@@ -1271,7 +1272,9 @@ export function AdminConsultationCommentsManager({
       defaultOpen={comments.length > 0 || canAdminCreateComments}
       description={
         canAdminCreateComments
-          ? "Gli amministratori possono creare, modificare ed eliminare commenti durante l'accorpamento."
+          ? consultationState === "phase_2_open"
+            ? "Gli amministratori possono creare, modificare ed eliminare commenti durante la votazione."
+            : "Gli amministratori possono creare, modificare ed eliminare commenti durante l'accorpamento."
           : comments.length === 0
           ? "Non ci sono ancora commenti attivi inseriti dagli esperti per questa consultazione."
           : `Sono presenti ${comments.length} ${comments.length === 1 ? "commento attivo" : "commenti attivi"} modificabili dagli amministratori.`
